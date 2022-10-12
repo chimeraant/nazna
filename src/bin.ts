@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 
-import { io } from 'fp-ts';
+import { console, io } from 'fp-ts';
+import { pipe } from 'fp-ts/function';
 
-export const main = io.of(console.log('aabccd'));
+export const main = pipe(
+  io.Do,
+  io.chain(() => console.log('aab')),
+  io.chain(() => console.log('ccd'))
+);
 
 main();
