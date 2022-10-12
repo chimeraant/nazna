@@ -6,7 +6,7 @@ specifiers:
   '@typescript-eslint/parser': ^5.40.0
   '@vitest/coverage-c8': ^0.24.1
   eslint: ^8.25.0
-  eslint-config-chimeraant: ^1.2.0
+  eslint-config-chimeraant: ^1.2.1
   eslint-config-prettier: ^8.5.0
   eslint-plugin-fp-ts: ^0.3.2
   eslint-plugin-functional: ^4.4.1
@@ -32,7 +32,7 @@ devDependencies:
   '@typescript-eslint/parser': 5.40.0_z4bbprzjrhnsfa24uvmcbu7f5q
   '@vitest/coverage-c8': 0.24.1
   eslint: 8.25.0
-  eslint-config-chimeraant: 1.2.0_2tsnusbsere4cd5ttcil6tky4e
+  eslint-config-chimeraant: 1.2.1_2tsnusbsere4cd5ttcil6tky4e
   eslint-config-prettier: 8.5.0_eslint@8.25.0
   eslint-plugin-fp-ts: 0.3.2_z4bbprzjrhnsfa24uvmcbu7f5q
   eslint-plugin-functional: 4.4.1_z4bbprzjrhnsfa24uvmcbu7f5q
@@ -772,8 +772,8 @@ packages:
     engines: {node: '>=10'}
     dev: true
 
-  /eslint-config-chimeraant/1.2.0_2tsnusbsere4cd5ttcil6tky4e:
-    resolution: {integrity: sha512-uofD+MCD+ym9AjZrPyf+U+MUwK7xVfxM7xxk70ERUK8mXIqVzRDIaIDxs7HUOJgMZVS3dIFuOcYMm2pbMs2Gzg==}
+  /eslint-config-chimeraant/1.2.1_2tsnusbsere4cd5ttcil6tky4e:
+    resolution: {integrity: sha512-kWnQ/GTwEvOvyn5QzMaM5j7aBNcB92Qm87ny0P4L08163urvKjMgm0vki5TdO8avtZlrikjIb4OEcJXJu8LaUg==}
     peerDependencies:
       '@typescript-eslint/eslint-plugin': ^5.36.1
       eslint: '>= 7'
