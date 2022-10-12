@@ -1,0 +1,10 @@
+{
+  "extends": "nazna-tsconfig",
+  "compilerOptions": {
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "outDir": "dist"
+  },
+  "include": [ "src/bin.ts" ]
+}
