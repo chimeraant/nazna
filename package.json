@@ -15,8 +15,13 @@
     "vite": "^3.1.7",
     "vitest": "^0.24.1"
   },
+  "peerDependencies": {
+    "vite": "^3.1.7"
+  },
   "scripts": {
-    "build:bin": "tsc --project tsconfig.bin.json",
+    "build:lib": "vite build",
+    "build:type": "tsc --project tsconfig.lib.json --emitDeclarationOnly",
+    "build": "pnpm build:type && pnpm build:lib",
     "fix": "eslint --max-warnings=0 --ext .ts . --fix",
     "lint": "eslint --max-warnings=0 --ext .ts .",
     "test": "vitest"
@@ -25,7 +30,13 @@
   "version": "0.0.0-semantic-release",
   "license": "MIT",
   "repository": "https://github.com/chimeraant/nazna.git",
-  "bin": "./dist/bin.js",
+  "types": "./dist/index.d.ts",
+  "main": "./dist/index.umd.js",
+  "module": "./dist/index.mjs",
+  "exports": {
+    "import": "./dist/index.mjs",
+    "require": "./dist/index.umd.js"
+  },
   "files": [
     "dist"
   ],

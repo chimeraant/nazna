@@ -31,8 +31,8 @@ jobs:
     - name: Lint
       run: pnpm lint
 
-    - name: Build `bin`
-      run: pnpm build:bin
+    - name: Build lib
+      run: pnpm build:lib
 
     - name: Release
       env:

@@ -1,6 +1,6 @@
 {
   "extends": "nazna-tsconfig",
   "include": [
-    "test",
+    "src"
   ]
 }
