@@ -31,11 +31,12 @@
   "license": "MIT",
   "repository": "https://github.com/chimeraant/nazna.git",
   "types": "./dist/index.d.ts",
+  "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "exports": {
     ".": {
       "import": "./dist/index.mjs",
-      "require": "./dist/index.mjs"
+      "require": "./dist/index.js"
     }
   },
   "files": [

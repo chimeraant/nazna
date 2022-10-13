@@ -8,6 +8,7 @@ export const libConfig = (): UserConfigExport => ({
       name: JSON.parse(fs.readFileSync('package.json', 'utf8')).name,
       entry: path.resolve(process.cwd(), 'src/index.ts'),
       fileName: 'index',
+      formats: ['es', 'cjs', 'umd', 'iife'],
     },
   },
 });
