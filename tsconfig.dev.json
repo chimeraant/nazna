@@ -1,7 +1,6 @@
 {
-  "extends": "./tsconfig",
+  "extends": "nazna-tsconfig",
   "include": [
     "test",
-    "vite.config.ts"
   ]
 }

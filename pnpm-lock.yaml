@@ -10,24 +10,26 @@ specifiers:
   nazna-tsconfig: ^1.0.0
   pnpm: ^7.13.4
   prettier: ^2.7.1
+  ts-pattern: ^4.0.5
   typescript: ^4.8.4
   typescript-language-server: ^2.0.1
+  vite: ^3.1.7
   vitest: ^0.24.1
-
-dependencies:
-  fp-ts: 2.12.3
 
 devDependencies:
   '@types/node': 18.8.5
   '@vitest/coverage-c8': 0.24.1
   eslint: 8.25.0
   eslint-config-chimeraant: 1.2.4_z4bbprzjrhnsfa24uvmcbu7f5q
+  fp-ts: 2.12.3
   husky: 8.0.1
   nazna-tsconfig: 1.0.0
   pnpm: 7.13.4
   prettier: 2.7.1
+  ts-pattern: 4.0.5
   typescript: 4.8.4
   typescript-language-server: 2.0.1
+  vite: 3.1.7
   vitest: 0.24.1
 
 packages:
@@ -1087,6 +1089,7 @@ packages:
 
   /fp-ts/2.12.3:
     resolution: {integrity: sha512-8m0XvW8kZbfnJOA4NvSVXu95mLbPf4LQGwQyqVukIYS4KzSNJiyKSmuZUmbVHteUi6MGkAJGPb0goPZqI+Tsqg==}
+    dev: true
 
   /fs-extra/10.1.0:
     resolution: {integrity: sha512-oRXApq54ETRj4eMiFzGnHWGy+zo5raudjuxN0b8H7s/RU2oW0Wvsx9O0ACRN/kRq9E8Vu/ReskGB5o3ji+FzHQ==}
@@ -1738,6 +1741,10 @@ packages:
     engines: {node: '>=8.0'}
     dependencies:
       is-number: 7.0.0
+    dev: true
+
+  /ts-pattern/4.0.5:
+    resolution: {integrity: sha512-Bq44KCEt7JVaNLa148mBCJkcQf4l7jtLEBDuDdeuLynWDA+1a60P4D0rMkqSM9mOKLQbIWUddE9h3XKyKwBeqA==}
     dev: true
 
   /tslib/1.14.1:
