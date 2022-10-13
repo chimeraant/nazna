@@ -21,7 +21,7 @@
   "scripts": {
     "build:lib": "vite build",
     "build:type": "tsc --project tsconfig.lib.json --emitDeclarationOnly",
-    "build": "pnpm build:type && pnpm build:lib",
+    "build": "pnpm build:lib && pnpm build:type",
     "fix": "eslint --max-warnings=0 --ext .ts . --fix",
     "lint": "eslint --max-warnings=0 --ext .ts .",
     "test": "vitest"
