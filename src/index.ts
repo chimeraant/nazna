@@ -1,14 +1,25 @@
-import * as fs from 'fs';
-import path from 'path';
-import { UserConfigExport } from 'vitest/config';
+import { console, readonlyArray, task as T } from 'fp-ts';
+import { pipe } from 'fp-ts/function';
+import * as _fs from 'fs/promises';
+import { match } from 'ts-pattern';
 
-export const libConfig = (): UserConfigExport => ({
-  build: {
-    lib: {
-      name: JSON.parse(fs.readFileSync('package.json', 'utf8')).name,
-      entry: path.resolve(process.cwd(), 'src/index.ts'),
-      fileName: 'index',
-      formats: ['es', 'cjs', 'umd', 'iife'],
-    },
-  },
+export type Config = {
+  readonly name: string;
+};
+
+const cliFile = `#!/usr/bin/env node
+require("./cjs/index").cli();
+`;
+
+const fs = {
+  writeFile:
+    (p: Parameters<typeof _fs.writeFile>): T.Task<void> =>
+    () =>
+      _fs.writeFile(...p),
+};
+
+export const cli: T.Task<unknown> = pipe(process.argv, readonlyArray.dropLeft(2), (argv) => {
+  return match(argv)
+    .with(['build', 'cli'], () => fs.writeFile(['dist/nazna', cliFile]))
+    .otherwise((command) => pipe(`command not found: ${command}`, console.log, T.fromIO));
 });

@@ -3,6 +3,7 @@
   "include": [
     "src",
     "test",
-    "vite.config.ts"
+    "vite.config.ts",
+    "nazna.config.ts"
   ]
 }
