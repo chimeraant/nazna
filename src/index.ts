@@ -56,6 +56,7 @@ const fixPackageJson = flow(
         lint: 'eslint --max-warnings=0 --ext .ts .',
         test: 'vitest',
         postinstall: 'nazna fix',
+        'pre-push': 'CI=true pnpm install && pnpm build && pnpm lint && pnpm publish --dry-run',
       },
       version: '0.0.0-semantic-release',
       license: 'MIT',

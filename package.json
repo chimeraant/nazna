@@ -30,7 +30,7 @@
     "build:types": "tsc src/**.ts --outDir dist/types --skipLibCheck --declaration --declarationMap --emitDeclarationOnly --esModuleInterop",
     "fix": "eslint --max-warnings=0 --ext .ts . --fix",
     "lint": "eslint --max-warnings=0 --ext .ts .",
-    "pre-push": "CI=true pnpm install && pnpm build && pnpm lint",
+    "pre-push": "CI=true pnpm install && pnpm build && pnpm lint && pnpm publish --dry-run",
     "test": "vitest"
   },
   "name": "nazna",
