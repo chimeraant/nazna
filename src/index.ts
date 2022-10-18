@@ -31,8 +31,8 @@ const fixPackageJson = flow(
   JSON.parse,
   (p) => ({
     ...p,
+    ...(typeof p.dependencies === 'object' ? { dependencies: sortedRecord(p.dependencies) } : {}),
     ...{
-      dependencies: sortedRecord(p.dependencies),
       devDependencies: sortedRecord({
         ...p.devDependencies,
         ...{
