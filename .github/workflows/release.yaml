@@ -31,11 +31,17 @@ jobs:
     - name: Lint
       run: pnpm lint
 
-    - name: Build lib
-      run: pnpm build:lib
+    - name: Build es6
+      run: pnpm build:es6
 
-    - name: Build type
-      run: pnpm build:type
+    - name: Build cjs
+      run: pnpm build:cjs
+
+    - name: Build types
+      run: pnpm build:types
+
+    - name: Build cli
+      run: pnpm build:cli
 
     - name: Release
       env:
