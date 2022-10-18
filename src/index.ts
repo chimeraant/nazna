@@ -51,7 +51,7 @@ const requiredSteps = [
   },
   {
     name: 'Build cli',
-    run: 'pnpm build:cli',
+    run: 'nazna build cli',
   },
   {
     name: 'Release',
@@ -63,24 +63,27 @@ const requiredSteps = [
   },
 ];
 
-const releaseYamlFile = yaml.dump({
-  name: 'Release',
-  on: {
-    push: {
-      branches: 'main',
+const releaseYamlFile = yaml.dump(
+  {
+    name: 'Release',
+    on: {
+      push: {
+        branches: 'main',
+      },
+      pull_request: {
+        branches: 'main',
+      },
     },
-    pull_request: {
-      branches: 'main',
+    jobs: {
+      release: {
+        name: 'Release',
+        'runs-on': 'ubuntu-latest',
+        steps: requiredSteps,
+      },
     },
   },
-  jobs: {
-    release: {
-      name: 'Release',
-      'runs-on': 'ubuntu-latest',
-      steps: requiredSteps,
-    },
-  },
-});
+  { noCompatMode: true }
+);
 
 const releaseRcFile = pipe(
   {
