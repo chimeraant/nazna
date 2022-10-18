@@ -181,7 +181,7 @@ const copyFileKeepPath = (p: string) => copyFile(p, p);
 
 const doNothing: T.Task<unknown> = T.of(undefined);
 
-const releaseYamlPath = path.join(rootDir, '.github', 'workflows', 'release.yaml');
+const releaseYamlPath = path.join(process.cwd(), '.github', 'workflows', 'release.yaml');
 
 const fix = pipe(
   T.Do,
