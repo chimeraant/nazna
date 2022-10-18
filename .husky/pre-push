@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-CI=true pnpm install && pnpm lint
+CI=true pnpm install && pnpm build && pnpm lint

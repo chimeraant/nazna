@@ -52,7 +52,7 @@ const fixPackageJson = flow(
         'build:cjs': 'swc src --out-dir dist/cjs --source-maps --config module.type=commonjs',
         'build:types':
           'tsc src/**.ts --outDir dist/types' +
-          ' --skipLibCheck --declaration --declarationMap --emitDeclarationOnly',
+          ' --skipLibCheck --declaration --declarationMap --emitDeclarationOnly --esModuleInterop',
         build: 'pnpm build:types && pnpm build:es6 && pnpm build:cjs && nazna build cli',
         fix: 'eslint --max-warnings=0 --ext .ts . --fix',
         lint: 'eslint --max-warnings=0 --ext .ts .',
