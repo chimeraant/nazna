@@ -52,6 +52,7 @@ const fixPackageJson = flow(
         fix: 'eslint --max-warnings=0 --ext .ts . --fix',
         lint: 'eslint --max-warnings=0 --ext .ts .',
         test: 'vitest',
+        postinstall: 'nazna fix',
       },
       version: '0.0.0-semantic-release',
       license: 'MIT',
