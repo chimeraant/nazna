@@ -51,7 +51,7 @@ const requiredSteps = [
   },
   {
     name: 'Build cli',
-    run: 'nazna build cli',
+    run: 'pnpm nazna build cli',
   },
   {
     name: 'Release',
