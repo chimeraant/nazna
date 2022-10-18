@@ -23,8 +23,7 @@
     "build": "pnpm build:types && pnpm build:es6 && pnpm build:cjs && nazna build cli",
     "fix": "eslint --max-warnings=0 --ext .ts . --fix",
     "lint": "eslint --max-warnings=0 --ext .ts .",
-    "test": "vitest",
-    "postinstall": "nazna fix"
+    "test": "vitest"
   },
   "name": "nazna",
   "version": "0.0.0-semantic-release",
