@@ -49,8 +49,9 @@
   "files": [
     ".envrc",
     ".eslintrc.json",
-    ".releaserc.json",
     ".nazna",
+    ".npmrc",
+    ".releaserc.json",
     "dist",
     "tsconfig.json"
   ],

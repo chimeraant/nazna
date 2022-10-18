@@ -200,6 +200,7 @@ const fix = pipe(
   ),
   T.chainFirst(() => copyFileKeepPath('.envrc')),
   T.chainFirst(() => copyFileKeepPath('.eslintrc.json')),
+  T.chainFirst(() => copyFileKeepPath('.npmrc')),
   T.chainFirst(() => copyFileKeepPath('.releaserc.json')),
   T.chainFirst(() => copyFileKeepPath('tsconfig.json')),
   T.chainFirst(() => fs.mkDir(naznaDir)),
