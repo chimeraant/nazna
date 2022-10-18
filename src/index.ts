@@ -1,6 +1,7 @@
-import { console, readonlyArray, task as T } from 'fp-ts';
+import { console, ord, readonlyArray, readonlyRecord, string, task as T } from 'fp-ts';
 import { flow, pipe } from 'fp-ts/function';
 import * as _fs from 'fs/promises';
+import path from 'path';
 import { match } from 'ts-pattern';
 
 const cliFile = `#!/usr/bin/env node
@@ -20,27 +21,31 @@ const releaseRcFile = pipe(
   (obj) => JSON.stringify(obj, undefined, 2)
 );
 
+const sortedRecord = flow(
+  readonlyRecord.toEntries,
+  readonlyArray.sort(ord.tuple(string.Ord, ord.trivial)),
+  readonlyRecord.fromEntries
+);
+
 const fixPackageJson = flow(
   JSON.parse,
   (p) => ({
     ...p,
     ...{
-      devDependencies: {
+      dependencies: sortedRecord(p.dependencies),
+      devDependencies: sortedRecord({
         ...p.devDependencies,
         ...{
           '@swc/cli': '^0.1.57',
           '@swc/core': '^1.3.8',
           eslint: '^8.25.0',
-          'eslint-config-chimeraant': '^1.2.4',
           husky: '^8.0.1',
           'nazna-tsconfig': '^1.0.0',
           pnpm: '^7.13.4',
-          prettier: '^2.7.1',
           typescript: '^4.8.4',
-          'typescript-language-server': '^2.0.1',
           vitest: '^0.24.1',
         },
-      },
+      }),
       scripts: {
         ...p.scripts,
         'build:es6': 'swc src --out-dir dist/es6 --source-maps',
@@ -52,22 +57,19 @@ const fixPackageJson = flow(
         fix: 'eslint --max-warnings=0 --ext .ts . --fix',
         lint: 'eslint --max-warnings=0 --ext .ts .',
         test: 'vitest',
-        postinstall: 'nazna fix',
+        postinstall: 'nazna fix && husky install',
       },
       version: '0.0.0-semantic-release',
       license: 'MIT',
       types: './dist/types/index.d.ts',
       main: './dist/cjs/index.js',
-      module: './dist/es6/index.mjs',
+      module: './dist/es6/index.js',
       exports: {
         require: './dist/cjs/index.js',
-        import: './dist/es6/index.mjs',
+        import: './dist/es6/index.js',
       },
       files: ['dist'],
       bin: './dist/cli.js',
-      eslintConfig: {
-        extends: 'chimeraant',
-      },
     },
   }),
   (obj) => JSON.stringify(obj, undefined, 2)
@@ -76,11 +78,13 @@ const fixPackageJson = flow(
 type FS = {
   readonly writeFile: (file: string, data: string) => T.Task<void>;
   readonly readFile: (file: string) => T.Task<string>;
+  readonly copyFile: (src: string, dest: string) => T.Task<void>;
 };
 
 const fs: FS = {
   writeFile: (file, data) => () => _fs.writeFile(file, data, { encoding: 'utf8' }),
   readFile: (file) => () => _fs.readFile(file, 'utf8'),
+  copyFile: (src, dest) => () => _fs.copyFile(src, dest),
 };
 
 const fix = pipe(
@@ -91,6 +95,24 @@ const fix = pipe(
       fs.readFile('package.json'),
       T.map(fixPackageJson),
       T.chain((content) => fs.writeFile('package.json', content))
+    )
+  ),
+  T.chainFirst(() =>
+    fs.copyFile(
+      path.join(__dirname, '..', 'tsconfig.json'),
+      path.join(process.cwd(), 'tsconfig.json')
+    )
+  ),
+  T.chainFirst(() =>
+    fs.copyFile(
+      path.join(__dirname, '..', '.eslintrc.json'),
+      path.join(process.cwd(), '.eslintrc.json')
+    )
+  ),
+  T.chainFirst(() =>
+    fs.copyFile(
+      path.join(__dirname, '..', '.releaserc.json'),
+      path.join(process.cwd(), '.releaserc.json')
     )
   )
 );

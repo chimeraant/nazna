@@ -43,9 +43,6 @@ jobs:
     - name: Build cli
       run: pnpm build:cli
 
-    - name: Nazna fix
-      run: ./dist/cli.js fix
-
     - name: Release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
