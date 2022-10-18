@@ -20,20 +20,6 @@ const releaseRcFile = pipe(
   (obj) => JSON.stringify(obj, undefined, 2)
 );
 
-const devDependencies = {
-  '@swc/cli': '^0.1.57',
-  '@swc/core': '^1.3.8',
-  eslint: '^8.25.0',
-  'eslint-config-chimeraant': '^1.2.4',
-  husky: '^8.0.1',
-  'nazna-tsconfig': '^1.0.0',
-  pnpm: '^7.13.4',
-  prettier: '^2.7.1',
-  typescript: '^4.8.4',
-  'typescript-language-server': '^2.0.1',
-  vitest: '^0.24.1',
-};
-
 const fixPackageJson = flow(
   JSON.parse,
   (p) => ({
@@ -41,9 +27,22 @@ const fixPackageJson = flow(
     ...{
       devDependencies: {
         ...p.devDependencies,
-        ...devDependencies,
+        ...{
+          '@swc/cli': '^0.1.57',
+          '@swc/core': '^1.3.8',
+          eslint: '^8.25.0',
+          'eslint-config-chimeraant': '^1.2.4',
+          husky: '^8.0.1',
+          'nazna-tsconfig': '^1.0.0',
+          pnpm: '^7.13.4',
+          prettier: '^2.7.1',
+          typescript: '^4.8.4',
+          'typescript-language-server': '^2.0.1',
+          vitest: '^0.24.1',
+        },
       },
       scripts: {
+        ...p.scripts,
         'build:es6': 'swc src --out-dir dist/es6 --source-maps',
         'build:cjs': 'swc src --out-dir dist/cjs --source-maps --config module.type=commonjs',
         'build:types':
@@ -73,26 +72,31 @@ const fixPackageJson = flow(
   (obj) => JSON.stringify(obj, undefined, 2)
 );
 
-const fs = {
-  writeFile: (p: Parameters<typeof _fs.writeFile>) => () => _fs.writeFile(...p),
-  readFile: (p: Parameters<typeof _fs.readFile>) => () => _fs.readFile(...p),
+type FS = {
+  readonly writeFile: (file: string, data: string) => T.Task<void>;
+  readonly readFile: (file: string) => T.Task<string>;
+};
+
+const fs: FS = {
+  writeFile: (file, data) => () => _fs.writeFile(file, data, { encoding: 'utf8' }),
+  readFile: (file) => () => _fs.readFile(file, 'utf8'),
 };
 
 const fix = pipe(
   T.Do,
-  T.chain(() => fs.writeFile(['.releaserc.json', releaseRcFile, { encoding: 'utf8' }])),
+  T.chain(() => fs.writeFile('.releaserc.json', releaseRcFile)),
   T.chainFirst(() =>
     pipe(
-      () => _fs.readFile('package.json', 'utf8'),
+      fs.readFile('package.json'),
       T.map(fixPackageJson),
-      T.chain((content) => fs.writeFile(['package.json', content, {}]))
+      T.chain((content) => fs.writeFile('package.json', content))
     )
   )
 );
 
 export const cli: T.Task<unknown> = pipe(process.argv, readonlyArray.dropLeft(2), (argv) =>
   match(argv)
-    .with(['build', 'cli'], () => fs.writeFile(['dist/nazna', cliFile, {}]))
+    .with(['build', 'cli'], () => fs.writeFile('dist/nazna', cliFile))
     .with(['fix'], () => fix)
     .otherwise((command) => pipe(`command not found: ${command}`, console.log, T.fromIO))
 );
