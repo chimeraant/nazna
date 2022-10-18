@@ -1,9 +1,0 @@
-{
-  "extends": "nazna-tsconfig",
-  "compilerOptions": {
-    "outDir": "dist"
-  },
-  "include": [
-    "src"
-  ]
-}
