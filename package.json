@@ -46,9 +46,11 @@
     "import": "./dist/es6/index.js"
   },
   "files": [
-    "dist",
+    ".envrc",
     ".eslintrc.json",
     ".releaserc.json",
+    ".nazna",
+    "dist",
     "tsconfig.json"
   ],
   "bin": "./dist/cli.js"

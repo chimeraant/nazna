@@ -109,10 +109,10 @@ const fix = pipe(
       T.chain((content) => fs.writeFile('package.json', content))
     )
   ),
-  T.chainFirst(() => copyFileKeepPath('tsconfig.json')),
+  T.chainFirst(() => copyFileKeepPath('.envrc')),
   T.chainFirst(() => copyFileKeepPath('.eslintrc.json')),
   T.chainFirst(() => copyFileKeepPath('.releaserc.json')),
-  T.chainFirst(() => copyFileKeepPath('.envrc')),
+  T.chainFirst(() => copyFileKeepPath('tsconfig.json')),
   T.chainFirst(() => fs.mkDir(naznaDir)),
   T.chainFirst(() => copyFileKeepPath(path.join('.nazna', '.gitconfig'))),
   T.chainFirst(() =>
