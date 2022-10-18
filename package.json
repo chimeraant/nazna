@@ -30,6 +30,7 @@
     "build:types": "tsc src/**.ts --outDir dist/types --skipLibCheck --declaration --declarationMap --emitDeclarationOnly --esModuleInterop",
     "build:cli": "printf '#!/usr/bin/env node\nrequire(\"./cjs/index\").cli();' > ./dist/cli.js && chmod +x ./dist/cli.js",
     "build": "pnpm build:types && pnpm build:es6 && pnpm build:cjs && pnpm build:cli",
+    "prepush": "pnpm install && pnpm build && pnpm lint",
     "fix": "eslint --max-warnings=0 --ext .ts . --fix",
     "lint": "eslint --max-warnings=0 --ext .ts .",
     "test": "vitest"
