@@ -3,6 +3,7 @@ lockfileVersion: 5.4
 specifiers:
   '@swc/cli': ^0.1.57
   '@swc/core': ^1.3.8
+  '@types/js-yaml': ^4.0.5
   '@types/node': ^18.8.5
   '@typescript-eslint/eslint-plugin': ^5.40.0
   '@typescript-eslint/parser': ^5.40.0
@@ -15,6 +16,7 @@ specifiers:
   eslint-plugin-simple-import-sort: ^8.0.0
   eslint-plugin-unused-imports: ^2.0.0
   fp-ts: ^2.12.3
+  js-yaml: ^4.1.0
   pnpm: ^7.13.4
   prettier: ^2.7.1
   ts-pattern: ^4.0.5
@@ -22,6 +24,7 @@ specifiers:
   vitest: ^0.24.1
 
 dependencies:
+  '@types/js-yaml': 4.0.5
   '@typescript-eslint/eslint-plugin': 5.40.0_25sstg4uu2sk4pm7xcyzuov7xq
   '@typescript-eslint/parser': 5.40.0_z4bbprzjrhnsfa24uvmcbu7f5q
   eslint-config-prettier: 8.5.0_eslint@8.25.0
@@ -32,6 +35,7 @@ dependencies:
   eslint-plugin-simple-import-sort: 8.0.0_eslint@8.25.0
   eslint-plugin-unused-imports: 2.0.0_f7lcnv6avoszhva7xxk5tg6wiq
   fp-ts: 2.12.3
+  js-yaml: 4.1.0
   prettier: 2.7.1
   ts-pattern: 4.0.5
 
@@ -304,6 +308,10 @@ packages:
   /@types/chai/4.3.3:
     resolution: {integrity: sha512-hC7OMnszpxhZPduX+m+nrx+uFoLkWOMiR4oa/AZF3MuSETYTZmFfJAHqZEM8MVlvfG7BEUcgvtwoCTxBp6hm3g==}
     dev: true
+
+  /@types/js-yaml/4.0.5:
+    resolution: {integrity: sha512-FhpRzf927MNQdRZP0J5DLIdTXhjLYzeUTmLAu69mnVksLH9CJY3IuSeEgbKUki7GQZm0WqDkGzyxju2EZGD2wA==}
+    dev: false
 
   /@types/json-schema/7.0.11:
     resolution: {integrity: sha512-wOuvG1SN4Us4rez+tylwwwCV1psiNVOkJeM3AUWUNWg/jDQY2+HE/444y5gc+jBmRqASOm2Oeh5c1axHobwRKQ==}

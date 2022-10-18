@@ -1,12 +1,86 @@
 import { console, ord, readonlyArray, readonlyRecord, string, task as T } from 'fp-ts';
 import { flow, pipe } from 'fp-ts/function';
 import * as _fs from 'fs/promises';
+import * as yaml from 'js-yaml';
 import path from 'path';
 import { match } from 'ts-pattern';
 
 const cliFile = `#!/usr/bin/env node
 require("./cjs/index").cli();
 `;
+
+const requiredSteps = [
+  {
+    name: 'Checkout',
+    uses: 'actions/checkout@v3',
+  },
+  {
+    name: 'Setup pnpm',
+    uses: 'pnpm/action-setup@v2.2.3',
+    with: {
+      version: 7,
+    },
+  },
+  {
+    name: 'Setup Node.js',
+    uses: 'actions/setup-node@v3',
+    with: {
+      'node-version': 16,
+      cache: 'pnpm',
+    },
+  },
+  {
+    name: 'Install dependencies',
+    run: 'pnpm install',
+  },
+  {
+    name: 'Lint',
+    run: 'pnpm lint',
+  },
+  {
+    name: 'Build es6',
+    run: 'pnpm build:es6',
+  },
+  {
+    name: 'Build cjs',
+    run: 'pnpm build:cjs',
+  },
+  {
+    name: 'Build types',
+    run: 'pnpm build:types',
+  },
+  {
+    name: 'Build cli',
+    run: 'pnpm build:cli',
+  },
+  {
+    name: 'Release',
+    env: {
+      GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}',
+      NPM_TOKEN: '${{ secrets.NPM_TOKEN }}',
+    },
+    run: 'npx semantic-release',
+  },
+];
+
+const releaseYamlFile = yaml.dump({
+  name: 'Release',
+  on: {
+    push: {
+      branches: 'main',
+    },
+    pull_request: {
+      branches: 'main',
+    },
+  },
+  jobs: {
+    release: {
+      name: 'Release',
+      'runs-on': 'ubuntu-latest',
+      steps: requiredSteps,
+    },
+  },
+});
 
 const releaseRcFile = pipe(
   {
@@ -80,6 +154,7 @@ type FS = {
   readonly copyFile: (src: string, dest: string) => T.Task<void>;
   readonly mkDir: (path: string) => T.Task<string | undefined>;
   readonly cpDir: (src: string, dest: string) => T.Task<void>;
+  readonly exists: (path: string) => T.Task<boolean>;
 };
 
 const fs: FS = {
@@ -88,6 +163,11 @@ const fs: FS = {
   copyFile: (src, dest) => () => _fs.copyFile(src, dest),
   mkDir: (dirPath) => () => _fs.mkdir(dirPath, { recursive: true }),
   cpDir: (src, dest) => () => _fs.cp(src, dest, { recursive: true }),
+  exists: (filePath) => () =>
+    _fs
+      .access(filePath)
+      .then(() => true)
+      .catch(() => false),
 };
 
 const rootDir = path.join(__dirname, '..', '..');
@@ -98,6 +178,10 @@ const copyFile = (src: string, dest: string) =>
   fs.copyFile(path.join(rootDir, src), path.join(process.cwd(), dest));
 
 const copyFileKeepPath = (p: string) => copyFile(p, p);
+
+const doNothing: T.Task<unknown> = T.of(undefined);
+
+const releaseYamlPath = path.join(rootDir, '.github', 'workflows', 'release.yaml');
 
 const fix = pipe(
   T.Do,
@@ -119,6 +203,12 @@ const fix = pipe(
     fs.cpDir(
       path.join(rootDir, '.nazna', 'gitHooks'),
       path.join(process.cwd(), '.nazna', 'gitHooks')
+    )
+  ),
+  T.chainFirst(() =>
+    pipe(
+      fs.exists(releaseYamlPath),
+      T.chain((exists) => (exists ? doNothing : fs.writeFile(releaseYamlPath, releaseYamlFile)))
     )
   )
 );
