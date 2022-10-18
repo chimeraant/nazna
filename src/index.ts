@@ -87,6 +87,8 @@ const fs: FS = {
   copyFile: (src, dest) => () => _fs.copyFile(src, dest),
 };
 
+const rootDir = path.join(__dirname, '..', '..');
+
 const fix = pipe(
   T.Do,
   T.chain(() => fs.writeFile('.releaserc.json', releaseRcFile)),
@@ -98,22 +100,13 @@ const fix = pipe(
     )
   ),
   T.chainFirst(() =>
-    fs.copyFile(
-      path.join(__dirname, '..', 'tsconfig.json'),
-      path.join(process.cwd(), 'tsconfig.json')
-    )
+    fs.copyFile(path.join(rootDir, 'tsconfig.json'), path.join(process.cwd(), 'tsconfig.json'))
   ),
   T.chainFirst(() =>
-    fs.copyFile(
-      path.join(__dirname, '..', '.eslintrc.json'),
-      path.join(process.cwd(), '.eslintrc.json')
-    )
+    fs.copyFile(path.join(rootDir, '.eslintrc.json'), path.join(process.cwd(), '.eslintrc.json'))
   ),
   T.chainFirst(() =>
-    fs.copyFile(
-      path.join(__dirname, '..', '.releaserc.json'),
-      path.join(process.cwd(), '.releaserc.json')
-    )
+    fs.copyFile(path.join(rootDir, '.releaserc.json'), path.join(process.cwd(), '.releaserc.json'))
   )
 );
 
