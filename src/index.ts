@@ -87,7 +87,7 @@ const fs: FS = {
   readFile: (file) => () => _fs.readFile(file, 'utf8'),
   copyFile: (src, dest) => () => _fs.copyFile(src, dest),
   mkDir: (dirPath) => () => _fs.mkdir(dirPath, { recursive: true }),
-  cpDir: (src, dest) => () => _fs.cp(src, dest),
+  cpDir: (src, dest) => () => _fs.cp(src, dest, { recursive: true }),
 };
 
 const rootDir = path.join(__dirname, '..', '..');
