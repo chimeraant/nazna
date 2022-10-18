@@ -1,2 +1,2 @@
 [core]
-	hooksPath = gitHooks
+	hooksPath = ./.nazna/gitHooks
