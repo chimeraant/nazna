@@ -44,7 +44,7 @@ jobs:
       run: pnpm build:cli
 
     - name: Nazna fix
-      run: ./dist/nazna fix
+      run: ./dist/cli.js fix
 
     - name: Release
       env:
