@@ -44,8 +44,8 @@ const fixPackageJson = flow(
           vitest: '^0.24.1',
         },
       }),
-      scripts: {
-        ...p.scripts,
+      scripts: sortedRecord({
+        ...(p.scripts ?? {}),
         'build:es6': 'swc src --out-dir dist/es6 --source-maps',
         'build:cjs': 'swc src --out-dir dist/cjs --source-maps --config module.type=commonjs',
         'build:types':
@@ -57,7 +57,7 @@ const fixPackageJson = flow(
         test: 'vitest',
         postinstall: 'nazna fix',
         'pre-push': 'CI=true pnpm install && pnpm build && pnpm lint && pnpm publish --dry-run',
-      },
+      }),
       version: '0.0.0-semantic-release',
       license: 'MIT',
       types: './dist/types/index.d.ts',
