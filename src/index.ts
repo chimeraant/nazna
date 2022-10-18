@@ -39,7 +39,6 @@ const fixPackageJson = flow(
           '@swc/cli': '^0.1.57',
           '@swc/core': '^1.3.8',
           eslint: '^8.25.0',
-          husky: '^8.0.1',
           'nazna-tsconfig': '^1.0.0',
           pnpm: '^7.13.4',
           typescript: '^4.8.4',
@@ -57,7 +56,7 @@ const fixPackageJson = flow(
         fix: 'eslint --max-warnings=0 --ext .ts . --fix',
         lint: 'eslint --max-warnings=0 --ext .ts .',
         test: 'vitest',
-        postinstall: 'nazna fix && husky install',
+        postinstall: 'nazna fix',
       },
       version: '0.0.0-semantic-release',
       license: 'MIT',
@@ -79,15 +78,26 @@ type FS = {
   readonly writeFile: (file: string, data: string) => T.Task<void>;
   readonly readFile: (file: string) => T.Task<string>;
   readonly copyFile: (src: string, dest: string) => T.Task<void>;
+  readonly mkDir: (path: string) => T.Task<string | undefined>;
+  readonly cpDir: (src: string, dest: string) => T.Task<void>;
 };
 
 const fs: FS = {
   writeFile: (file, data) => () => _fs.writeFile(file, data, { encoding: 'utf8' }),
   readFile: (file) => () => _fs.readFile(file, 'utf8'),
   copyFile: (src, dest) => () => _fs.copyFile(src, dest),
+  mkDir: (dirPath) => () => _fs.mkdir(dirPath, { recursive: true }),
+  cpDir: (src, dest) => () => _fs.cp(src, dest),
 };
 
 const rootDir = path.join(__dirname, '..', '..');
+
+const naznaDir = path.join(process.cwd(), '.nazna');
+
+const copyFile = (src: string, dest: string) =>
+  fs.copyFile(path.join(rootDir, src), path.join(process.cwd(), dest));
+
+const copyFileKeepPath = (p: string) => copyFile(p, p);
 
 const fix = pipe(
   T.Do,
@@ -99,14 +109,17 @@ const fix = pipe(
       T.chain((content) => fs.writeFile('package.json', content))
     )
   ),
+  T.chainFirst(() => copyFileKeepPath('tsconfig.json')),
+  T.chainFirst(() => copyFileKeepPath('.eslintrc.json')),
+  T.chainFirst(() => copyFileKeepPath('.releaserc.json')),
+  T.chainFirst(() => copyFileKeepPath('.envrc')),
+  T.chainFirst(() => fs.mkDir(naznaDir)),
+  T.chainFirst(() => copyFileKeepPath(path.join('.nazna', '.gitconfig'))),
   T.chainFirst(() =>
-    fs.copyFile(path.join(rootDir, 'tsconfig.json'), path.join(process.cwd(), 'tsconfig.json'))
-  ),
-  T.chainFirst(() =>
-    fs.copyFile(path.join(rootDir, '.eslintrc.json'), path.join(process.cwd(), '.eslintrc.json'))
-  ),
-  T.chainFirst(() =>
-    fs.copyFile(path.join(rootDir, '.releaserc.json'), path.join(process.cwd(), '.releaserc.json'))
+    fs.cpDir(
+      path.join(rootDir, '.nazna', 'gitHooks'),
+      path.join(process.cwd(), '.nazna', 'gitHooks')
+    )
   )
 );
 

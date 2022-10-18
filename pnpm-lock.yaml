@@ -15,7 +15,6 @@ specifiers:
   eslint-plugin-simple-import-sort: ^8.0.0
   eslint-plugin-unused-imports: ^2.0.0
   fp-ts: ^2.12.3
-  husky: ^8.0.1
   nazna-tsconfig: ^1.0.0
   pnpm: ^7.13.4
   prettier: ^2.7.1
@@ -42,7 +41,6 @@ devDependencies:
   '@swc/core': 1.3.8
   '@types/node': 18.8.5
   eslint: 8.25.0
-  husky: 8.0.1
   nazna-tsconfig: 1.0.0
   pnpm: 7.13.4
   typescript: 4.8.4
@@ -1172,12 +1170,6 @@ packages:
     engines: {node: '>= 0.4.0'}
     dependencies:
       function-bind: 1.1.1
-    dev: true
-
-  /husky/8.0.1:
-    resolution: {integrity: sha512-xs7/chUH/CKdOCs7Zy0Aev9e/dKOMZf3K1Az1nar3tzlv0jfqnYtu235bstsWTmXOR0EfINrPa97yy4Lz6RiKw==}
-    engines: {node: '>=14'}
-    hasBin: true
     dev: true
 
   /ignore/5.2.0:
