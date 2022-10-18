@@ -184,7 +184,9 @@ const copyFileKeepPath = (p: string) => copyFile(p, p);
 
 const doNothing: T.Task<unknown> = T.of(undefined);
 
-const releaseYamlPath = path.join(process.cwd(), '.github', 'workflows', 'release.yaml');
+const workflowsPath = path.join(process.cwd(), '.github', 'workflows');
+
+const releaseYamlPath = path.join(workflowsPath, 'release.yaml');
 
 const fix = pipe(
   T.Do,
@@ -210,7 +212,8 @@ const fix = pipe(
   ),
   T.chainFirst(() =>
     pipe(
-      fs.exists(releaseYamlPath),
+      fs.mkDir(workflowsPath),
+      T.chain(() => fs.exists(releaseYamlPath)),
       T.chain((exists) => (exists ? doNothing : fs.writeFile(releaseYamlPath, releaseYamlFile)))
     )
   )
