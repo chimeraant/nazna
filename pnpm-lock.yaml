@@ -15,7 +15,6 @@ specifiers:
   eslint-plugin-simple-import-sort: ^8.0.0
   eslint-plugin-unused-imports: ^2.0.0
   fp-ts: ^2.12.3
-  nazna-tsconfig: ^1.0.0
   pnpm: ^7.13.4
   prettier: ^2.7.1
   ts-pattern: ^4.0.5
@@ -41,7 +40,6 @@ devDependencies:
   '@swc/core': 1.3.8
   '@types/node': 18.8.5
   eslint: 8.25.0
-  nazna-tsconfig: 1.0.0
   pnpm: 7.13.4
   typescript: 4.8.4
   vitest: 0.24.1
@@ -1295,10 +1293,6 @@ packages:
 
   /natural-compare/1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
-
-  /nazna-tsconfig/1.0.0:
-    resolution: {integrity: sha512-bK4LFxANymF6LTtuMMZsywr+FINEP3YsWrNMlER1heypUwqSZRsNyPP0YKjxDzmy4Gxm1hm0ta2HuoO2O/tlVg==}
-    dev: true
 
   /once/1.4.0:
     resolution: {integrity: sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w==}

@@ -39,7 +39,6 @@ const fixPackageJson = flow(
           '@swc/cli': '^0.1.57',
           '@swc/core': '^1.3.8',
           eslint: '^8.25.0',
-          'nazna-tsconfig': '^1.0.0',
           pnpm: '^7.13.4',
           typescript: '^4.8.4',
           vitest: '^0.24.1',
