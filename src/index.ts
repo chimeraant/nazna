@@ -188,7 +188,7 @@ type FixJob = {
 const writeTask = ({ path, content }: WriteJob): StringTaskEither =>
   pipe(
     fs.mkDir(readonlyArray.dropRight(1)(path)),
-    TE.chain(() => fs.writeFile(path)(content))
+    TE.chain((_) => fs.writeFile(path)(content))
   );
 
 const fixTask = ({ path, fixer }: FixJob): StringTaskEither =>
@@ -212,17 +212,17 @@ const jobToName = (job: Job): string =>
   match(job)
     .with({ job: 'write' }, ({ path }) => `write ${path}`)
     .with({ job: 'fix' }, ({ path }) => `fix ${path}`)
-    .with({ job: 'error' }, () => `error`)
+    .with({ job: 'error' }, (_) => `error`)
     .exhaustive();
 
 const jobToNamedTask = (job: Job): NamedTask => [jobToName(job), jobToStringTaskEither(job)];
 
 const argvToJobs = (argv: readonly string[]): readonly Job[] =>
   match(argv)
-    .with(['build', 'cli'], (): readonly Job[] => [
+    .with(['build', 'cli'], (_): readonly Job[] => [
       { job: 'write', path: ['dist', 'nazna'], content: cliFile },
     ])
-    .with(['fix'], (): readonly Job[] => [
+    .with(['fix'], (_): readonly Job[] => [
       { job: 'write', path: ['.releaserc.json'], content: constants.releasercJson },
       { job: 'write', path: ['.envrc'], content: constants.releasercJson },
       { job: 'write', path: ['.eslintrc.json'], content: constants.eslintrcJson },
