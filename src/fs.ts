@@ -1,4 +1,4 @@
-import { summonFor } from '@morphic-ts/batteries/lib/summoner-BASTJ';
+import { summonFor } from '@morphic-ts/batteries/lib/summoner-ESBST';
 import { taskEither as TE } from 'fp-ts';
 import { identity } from 'fp-ts/function';
 import { Mode } from 'fs';
