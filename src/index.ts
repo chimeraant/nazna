@@ -220,7 +220,7 @@ const argvToJobs = (argv: readonly string[]): readonly Job[] =>
     ])
     .with(['fix'], (_): readonly Job[] => [
       { job: 'write', path: ['.releaserc.json'], content: constants.releasercJson },
-      { job: 'write', path: ['.envrc'], content: constants.releasercJson },
+      { job: 'write', path: ['.envrc'], content: constants.envrc },
       { job: 'write', path: ['.eslintrc.json'], content: constants.eslintrcJson },
       { job: 'write', path: ['.npmrc'], content: constants.npmrc },
       { job: 'write', path: ['tsconfig.json'], content: constants.tsconfigJson },
