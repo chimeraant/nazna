@@ -1,7 +1,18 @@
-import { apply, console, ord, readonlyArray, readonlyRecord, string, task as T } from 'fp-ts';
+import {
+  apply,
+  console,
+  either as E,
+  ord,
+  readonlyArray,
+  readonlyRecord,
+  string,
+  task as T,
+  taskEither as TE,
+} from 'fp-ts';
 import { flow, pipe } from 'fp-ts/function';
 import * as _fs from 'fs/promises';
 import * as yaml from 'js-yaml';
+import * as pathModule from 'path';
 import { match } from 'ts-pattern';
 
 import * as constants from './constants';
@@ -139,75 +150,113 @@ const fixPackageJson = flow(
   (obj) => JSON.stringify(obj, undefined, 2)
 );
 
+type StringTaskEither = TE.TaskEither<string, string>;
+
+const toStringTaskEither =
+  (t: T.Task<unknown>): StringTaskEither =>
+  () =>
+    t().then(flow(String, E.right)).catch(flow(String, E.left));
+
 type FS = {
-  readonly writeFile: (file: string, data: string) => T.Task<void>;
-  readonly readFile: (file: string) => T.Task<string>;
-  readonly mkDir: (path: string) => T.Task<string | undefined>;
-  readonly cpDir: (src: string, dest: string) => T.Task<void>;
-  readonly exists: (path: string) => T.Task<boolean>;
+  readonly writeFile: (path: readonly string[]) => (data: string) => StringTaskEither;
+  readonly readFile: (path: readonly string[]) => StringTaskEither;
+  readonly mkDir: (path: readonly string[]) => StringTaskEither;
 };
 
 const fs: FS = {
-  writeFile: (file, data) => () => _fs.writeFile(file, data, { encoding: 'utf8' }),
-  readFile: (file) => () => _fs.readFile(file, 'utf8'),
-  mkDir: (dirPath) => () => _fs.mkdir(dirPath, { recursive: true }),
-  cpDir: (src, dest) => () => _fs.cp(src, dest, { recursive: true }),
-  exists: (filePath) => () =>
-    _fs
-      .access(filePath)
-      .then(() => true)
-      .catch(() => false),
+  writeFile: (path) => (data) =>
+    toStringTaskEither(() => _fs.writeFile(pathModule.join(...path), data, { encoding: 'utf8' })),
+  readFile: (path) => toStringTaskEither(() => _fs.readFile(pathModule.join(...path), 'utf8')),
+  mkDir: (path) =>
+    toStringTaskEither(() => _fs.mkdir(pathModule.join(...path), { recursive: true })),
 };
 
-// const naznaDir = '.nazna';
+type NamedTask = readonly [string, StringTaskEither];
 
-// const doNothing: T.Task<unknown> = T.of(undefined);
+type WriteJob = {
+  readonly job: 'write';
+  readonly path: readonly string[];
+  readonly content: string;
+};
 
-// const workflowsPath = '.github/workflows';
+type FixJob = {
+  readonly job: 'fix';
+  readonly path: readonly string[];
+  readonly fixer: (input: string) => string;
+};
 
-// const releaseYamlPath = `${workflowsPath}/release.yaml`;
-
-const fixFile = (path: string, fixer: (inp: string) => string) =>
+const writeTask = ({ path, content }: WriteJob): StringTaskEither =>
   pipe(
-    fs.readFile(path),
-    T.map(fixer),
-    T.chain((content) => fs.writeFile(path, content))
+    fs.mkDir(readonlyArray.dropRight(1)(path)),
+    TE.chain(() => fs.writeFile(path)(content))
   );
 
-const par = apply.sequenceS(T.ApplyPar)({
-  'write .releaserc.json': fs.writeFile('.releaserc.json', constants.releasercJson),
-  'write .envrc': fs.writeFile('.envrc', constants.releasercJson),
-  'write .eslintrc.json': fs.writeFile('.eslintrc.json', constants.eslintrcJson),
-  'write .npmrc': fs.writeFile('.npmrc', constants.npmrc),
-  'write tsconfig.json': fs.writeFile('tsconfig.json', constants.tsconfigJson),
-  'write .nazna/.gitconfig': fs.writeFile('.nazna/.gitconfig', constants.nazna.gitConfig),
-  'write .nazna/gitHooks/pre-push': fs.writeFile(
-    '.nazna/gitHooks/pre-push',
-    constants.nazna.gitHooks.prePush
-  ),
-  'fix .package.json': fixFile('package.json', fixPackageJson),
-});
+const fixTask = ({ path, fixer }: FixJob): StringTaskEither =>
+  pipe(path, fs.readFile, TE.map(fixer), TE.chain(fs.writeFile(path)));
 
-// const fix = pipe(
-//   T.Do,
-//   T.chainFirst(() =>
-//     fs.cpDir(
-//       path.join(rootDir, '.nazna', 'gitHooks'),
-//       path.join(process.cwd(), '.nazna', 'gitHooks')
-//     )
-//   ),
-//   T.chainFirst(() =>
-//     pipe(
-//       fs.mkDir(workflowsPath),
-//       T.chain(() => fs.exists(releaseYamlPath)),
-//       T.chain((exists) => (exists ? doNothing : fs.writeFile(releaseYamlPath, releaseYamlFile)))
-//     )
-//   )
-// );
+type ErrorJob = {
+  readonly job: 'error';
+  readonly value: string;
+};
 
-export const cli: T.Task<unknown> = pipe(process.argv, readonlyArray.dropLeft(2), (argv) =>
+type Job = WriteJob | FixJob | ErrorJob;
+
+const jobToStringTaskEither = (job: Job): StringTaskEither =>
+  match(job)
+    .with({ job: 'write' }, writeTask)
+    .with({ job: 'fix' }, fixTask)
+    .with({ job: 'error' }, ({ value }) => TE.left(value))
+    .exhaustive();
+
+const jobToName = (job: Job): string =>
+  match(job)
+    .with({ job: 'write' }, ({ path }) => `write ${path}`)
+    .with({ job: 'fix' }, ({ path }) => `fix ${path}`)
+    .with({ job: 'error' }, () => `error`)
+    .exhaustive();
+
+const jobToNamedTask = (job: Job): NamedTask => [jobToName(job), jobToStringTaskEither(job)];
+
+const argvToJobs = (argv: readonly string[]): readonly Job[] =>
   match(argv)
-    .with(['build', 'cli'], () => fs.writeFile('dist/nazna', cliFile))
-    .with(['fix'], () => par)
-    .otherwise((command) => pipe(`command not found: ${command}`, console.log, T.fromIO))
+    .with(['build', 'cli'], (): readonly Job[] => [
+      { job: 'write', path: ['dist', 'nazna'], content: cliFile },
+    ])
+    .with(['fix'], (): readonly Job[] => [
+      { job: 'write', path: ['.releaserc.json'], content: constants.releasercJson },
+      { job: 'write', path: ['.envrc'], content: constants.releasercJson },
+      { job: 'write', path: ['.eslintrc.json'], content: constants.eslintrcJson },
+      { job: 'write', path: ['.npmrc'], content: constants.npmrc },
+      { job: 'write', path: ['tsconfig.json'], content: constants.tsconfigJson },
+      { job: 'write', path: ['.nazna', '.gitconfig'], content: constants.nazna.gitConfig },
+      {
+        job: 'write',
+        path: ['.nazna', 'gitHooks', 'pre-push'],
+        content: constants.nazna.gitHooks.prePush,
+      },
+      { job: 'fix', path: ['package.json'], fixer: fixPackageJson },
+      { job: 'fix', path: ['.github', 'workflows', 'release.yaml'], fixer: fixPackageJson },
+    ])
+    .otherwise((command): readonly Job[] => [
+      { job: 'error', value: `command not found: ${command}` },
+    ]);
+
+const strictTaskLog = (str: string): T.Task<void> => pipe(str, console.log, T.fromIO);
+
+const showStringTaskEitherRecord = pipe(
+  E.getShow(string.Show, string.Show),
+  readonlyRecord.getShow(string.Ord),
+  (Show) => Show.show
 );
+
+export const cli = (argv: readonly string[]): T.Task<void> =>
+  pipe(
+    argv,
+    readonlyArray.dropLeft(2),
+    argvToJobs,
+    readonlyArray.map(jobToNamedTask),
+    readonlyRecord.fromEntries,
+    apply.sequenceS(T.ApplyPar),
+    T.map(showStringTaskEitherRecord),
+    T.chain(strictTaskLog)
+  );
