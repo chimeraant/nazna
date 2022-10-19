@@ -205,7 +205,7 @@ const writeTask = ({ path, content }: WriteJob) =>
 const writeAndChmodTask = ({ path, content }: WriteAndChmodJob) =>
   pipe(
     writeTask({ job: 'write', path, content }),
-    TE.chain((_) => fs.chmod(path, 777))
+    TE.chain((_) => fs.chmod(path, 0o755))
   );
 
 const fixTask = ({ path, fixer, defaultContent }: FixJob) =>
