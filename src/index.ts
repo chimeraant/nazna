@@ -76,28 +76,30 @@ const { summon } = summonFor({});
 
 export const ReleaseYamlFile = summon((F) => F.strMap(F.unknown()));
 
-const fixReleaseYamlFile = (raw: string) =>
-  pipe(raw, yaml.load, ReleaseYamlFile.type.decode, (rawObj) =>
-    yaml.dump({
-      ...rawObj,
-      name: 'Release',
-      on: {
-        push: {
-          branches: 'main',
-        },
-        pull_request: {
-          branches: 'main',
-        },
+const fixReleaseYamlFile = flow(
+  yaml.load,
+  ReleaseYamlFile.type.decode,
+  (rawObj) => ({
+    ...rawObj,
+    name: 'Release',
+    on: {
+      push: {
+        branches: 'main',
       },
-      jobs: {
-        release: {
-          name: 'Release',
-          'runs-on': 'ubuntu-latest',
-          steps: requiredSteps,
-        },
+      pull_request: {
+        branches: 'main',
       },
-    })
-  );
+    },
+    jobs: {
+      release: {
+        name: 'Release',
+        'runs-on': 'ubuntu-latest',
+        steps: requiredSteps,
+      },
+    },
+  }),
+  (content) => yaml.dump(content, { noCompatMode: true })
+);
 
 const sortedRecord = flow(
   readonlyRecord.toEntries,
@@ -232,13 +234,13 @@ const argvToJobs = (argv: readonly string[]): readonly Job[] =>
         job: 'fix',
         path: ['package.json'],
         fixer: fixPackageJson,
-        defaultContent: fixPackageJson(JSON.stringify({})),
+        defaultContent: fixPackageJson('{}'),
       },
       {
         job: 'fix',
         path: ['.github', 'workflows', 'release.yaml'],
         fixer: fixReleaseYamlFile,
-        defaultContent: fixReleaseYamlFile(yaml.dump({})),
+        defaultContent: fixReleaseYamlFile(''),
       },
     ])
     .otherwise((command): readonly Job[] => [
