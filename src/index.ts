@@ -110,9 +110,9 @@ const sortedRecord = flow(
 );
 
 const fixDependencies = (oldDependencies: unknown) =>
-  typeof oldDependencies === 'object' ? { dependencies: sortedRecord(oldDependencies) } : {};
+  typeof oldDependencies === 'object' ? { dependencies: sortedRecord(oldDependencies ?? {}) } : {};
 
-const objectOrElseEmpyObject = (obj: unknown) => (typeof obj === 'object' ? obj : {});
+const objectOrElseEmpyObject = (obj: unknown) => (typeof obj === 'object' ? obj ?? {} : {});
 
 const fixPackageJsonRun = (p: Record<string, unknown>) =>
   pipe(
@@ -135,9 +135,7 @@ const fixPackageJsonRun = (p: Record<string, unknown>) =>
           ...objectOrElseEmpyObject(p['scripts']),
           'build:es6': 'swc src --out-dir dist/es6 --source-maps',
           'build:cjs': 'swc src --out-dir dist/cjs --source-maps --config module.type=commonjs',
-          'build:types':
-            'tsc src/**.ts --outDir dist/types --skipLibCheck --declaration' +
-            ' --declarationMap --emitDeclarationOnly --esModuleInterop',
+          'build:types': 'tsc --project tsconfig.dist.json',
           build: 'pnpm build:types && pnpm build:es6 && pnpm build:cjs && nazna build cli',
           fix: 'eslint --max-warnings=0 --ext .ts . --fix',
           lint: 'eslint --max-warnings=0 --ext .ts .',
@@ -251,6 +249,7 @@ const argvToJobs = (argv: readonly string[]): readonly Job[] =>
       { job: 'write', path: ['.eslintrc.json'], content: constants.eslintrcJson },
       { job: 'write', path: ['.npmrc'], content: constants.npmrc },
       { job: 'write', path: ['tsconfig.json'], content: constants.tsconfigJson },
+      { job: 'write', path: ['tsconfig.dist.json'], content: constants.tsconfiDistJson },
       { job: 'write', path: ['.nazna', '.gitconfig'], content: constants.nazna.gitConfig },
       {
         job: 'write and chmod',

@@ -36,7 +36,7 @@
     "build:cjs": "swc src --out-dir dist/cjs --source-maps --config module.type=commonjs",
     "build:cli": "printf '#!/usr/bin/env node\nrequire(\"./cjs/index\").cli({process})();' > ./dist/cli.js && chmod +x ./dist/cli.js",
     "build:es6": "swc src --out-dir dist/es6 --source-maps",
-    "build:types": "tsc src/**.ts --outDir dist/types --skipLibCheck --declaration --declarationMap --emitDeclarationOnly --esModuleInterop",
+    "build:types": "tsc --project tsconfig.dist.json",
     "fix": "eslint --max-warnings=0 --ext .ts . --fix",
     "lint": "eslint --max-warnings=0 --ext .ts .",
     "pre-push": "CI=true pnpm install && pnpm build && pnpm lint && pnpm publish --dry-run",

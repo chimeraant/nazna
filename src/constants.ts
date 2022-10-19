@@ -109,43 +109,56 @@ export const npmrc = multiline(`
 auto-install-peers=true
 `);
 
-export const tsconfigJson = JSON.stringify(
-  {
-    compilerOptions: {
-      alwaysStrict: true,
-      declaration: true,
-      declarationMap: true,
-      esModuleInterop: true,
-      exactOptionalPropertyTypes: true,
-      forceConsistentCasingInFileNames: true,
-      isolatedModules: true,
-      lib: ['ESNext'],
-      module: 'commonjs',
-      noFallthroughCasesInSwitch: true,
-      noImplicitAny: true,
-      noImplicitOverride: true,
-      noImplicitReturns: true,
-      noImplicitThis: true,
-      noPropertyAccessFromIndexSignature: true,
-      noUncheckedIndexedAccess: true,
-      noUnusedLocals: true,
-      noUnusedParameters: true,
-      outDir: 'dist',
-      skipLibCheck: true,
-      sourceMap: true,
-      strict: true,
-      strictBindCallApply: true,
-      strictFunctionTypes: true,
-      strictNullChecks: true,
-      strictPropertyInitialization: true,
-      target: 'ESNext',
-      useUnknownInCatchVariables: true,
-    },
-    include: ['src', 'test'],
+export const tsconfiDistJson = multiline(`
+{
+  "extends": "./tsconfig",
+  "include": [
+    "src"
+  ]
+}
+`);
+
+export const tsconfigJson = multiline(`
+{
+  "compilerOptions": {
+    "alwaysStrict": true,
+    "declaration": true,
+    "declarationMap": true,
+    "esModuleInterop": true,
+    "emitDeclarationOnly": true,
+    "exactOptionalPropertyTypes": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "lib": [
+      "ESNext"
+    ],
+    "module": "commonjs",
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitAny": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "outDir": "dist/types",
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "strict": true,
+    "strictBindCallApply": true,
+    "strictFunctionTypes": true,
+    "strictNullChecks": true,
+    "strictPropertyInitialization": true,
+    "target": "ESNext",
+    "useUnknownInCatchVariables": true
   },
-  undefined,
-  2
-);
+  "include": [
+    "src",
+    "test"
+  ]
+}
+`);
 
 const prePush = multiline(`
 #!/usr/bin/env sh
