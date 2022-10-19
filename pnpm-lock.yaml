@@ -16,6 +16,7 @@ specifiers:
   eslint-plugin-simple-import-sort: ^8.0.0
   eslint-plugin-unused-imports: ^2.0.0
   fp-ts: ^2.12.3
+  fp-ts-std: ^0.15.0
   js-yaml: ^4.1.0
   pnpm: ^7.13.4
   prettier: ^2.7.1
@@ -35,6 +36,7 @@ dependencies:
   eslint-plugin-simple-import-sort: 8.0.0_eslint@8.25.0
   eslint-plugin-unused-imports: 2.0.0_f7lcnv6avoszhva7xxk5tg6wiq
   fp-ts: 2.12.3
+  fp-ts-std: 0.15.0_3rwmfr4cgglgwketcdxvriy3mq
   js-yaml: 4.1.0
   prettier: 2.7.1
   ts-pattern: 4.0.5
@@ -1102,6 +1104,19 @@ packages:
   /flatted/3.2.7:
     resolution: {integrity: sha512-5nqDSxl8nn5BSNxyR3n4I6eDmbolI6WT+QqR547RwxQapgjQBmtktdP+HTBb/a/zLsbzERTONyUB5pefh5TtjQ==}
 
+  /fp-ts-std/0.15.0_3rwmfr4cgglgwketcdxvriy3mq:
+    resolution: {integrity: sha512-45Kd1RrXFLsZGPyai20dmbgowuEgqJeRVKALt1sAyc5qTT94m0r151LQsgJ7XQ8jJNt6E27NEPziC6LHcANnNw==}
+    engines: {node: '>=14'}
+    peerDependencies:
+      fp-ts: ^2.11.0
+      monocle-ts: ^2.3.0
+      newtype-ts: ^0.3.0
+    dependencies:
+      fp-ts: 2.12.3
+      monocle-ts: 2.3.13_fp-ts@2.12.3
+      newtype-ts: 0.3.5_x3dhd2jyfdvkp6zhnkjzhfb2vy
+    dev: false
+
   /fp-ts/2.12.3:
     resolution: {integrity: sha512-8m0XvW8kZbfnJOA4NvSVXu95mLbPf4LQGwQyqVukIYS4KzSNJiyKSmuZUmbVHteUi6MGkAJGPb0goPZqI+Tsqg==}
     dev: false
@@ -1290,6 +1305,14 @@ packages:
     dependencies:
       brace-expansion: 1.1.11
 
+  /monocle-ts/2.3.13_fp-ts@2.12.3:
+    resolution: {integrity: sha512-D5Ygd3oulEoAm3KuGO0eeJIrhFf1jlQIoEVV2DYsZUMz42j4tGxgct97Aq68+F8w4w4geEnwFa8HayTS/7lpKQ==}
+    peerDependencies:
+      fp-ts: ^2.5.0
+    dependencies:
+      fp-ts: 2.12.3
+    dev: false
+
   /ms/2.1.2:
     resolution: {integrity: sha512-sGkPx+VjMtmA6MX27oA4FBFELFCZZ4S4XqeGOXCv68tT+jb3vk/RyaKWP0PTKyWtmLSM0b+adUTEvbs1PEaH2w==}
 
@@ -1301,6 +1324,16 @@ packages:
 
   /natural-compare/1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
+
+  /newtype-ts/0.3.5_x3dhd2jyfdvkp6zhnkjzhfb2vy:
+    resolution: {integrity: sha512-v83UEQMlVR75yf1OUdoSFssjitxzjZlqBAjiGQ4WJaML8Jdc68LJ+BaSAXUmKY4bNzp7hygkKLYTsDi14PxI2g==}
+    peerDependencies:
+      fp-ts: ^2.0.0
+      monocle-ts: ^2.0.0
+    dependencies:
+      fp-ts: 2.12.3
+      monocle-ts: 2.3.13_fp-ts@2.12.3
+    dev: false
 
   /once/1.4.0:
     resolution: {integrity: sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w==}

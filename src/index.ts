@@ -1,9 +1,10 @@
-import { console, ord, readonlyArray, readonlyRecord, string, task as T } from 'fp-ts';
+import { apply, console, ord, readonlyArray, readonlyRecord, string, task as T } from 'fp-ts';
 import { flow, pipe } from 'fp-ts/function';
 import * as _fs from 'fs/promises';
 import * as yaml from 'js-yaml';
-import path from 'path';
 import { match } from 'ts-pattern';
+
+import * as constants from './constants';
 
 const cliFile = `#!/usr/bin/env node
 require("./cjs/index").cli();
@@ -63,7 +64,7 @@ const requiredSteps = [
   },
 ];
 
-const releaseYamlFile = yaml.dump(
+export const releaseYamlFile = yaml.dump(
   {
     name: 'Release',
     on: {
@@ -83,19 +84,6 @@ const releaseYamlFile = yaml.dump(
     },
   },
   { noCompatMode: true }
-);
-
-const releaseRcFile = pipe(
-  {
-    branches: ['main'],
-    plugins: [
-      '@semantic-release/commit-analyzer',
-      '@semantic-release/release-notes-generator',
-      '@semantic-release/npm',
-      '@semantic-release/github',
-    ],
-  },
-  (obj) => JSON.stringify(obj, undefined, 2)
 );
 
 const sortedRecord = flow(
@@ -154,7 +142,6 @@ const fixPackageJson = flow(
 type FS = {
   readonly writeFile: (file: string, data: string) => T.Task<void>;
   readonly readFile: (file: string) => T.Task<string>;
-  readonly copyFile: (src: string, dest: string) => T.Task<void>;
   readonly mkDir: (path: string) => T.Task<string | undefined>;
   readonly cpDir: (src: string, dest: string) => T.Task<void>;
   readonly exists: (path: string) => T.Task<boolean>;
@@ -163,7 +150,6 @@ type FS = {
 const fs: FS = {
   writeFile: (file, data) => () => _fs.writeFile(file, data, { encoding: 'utf8' }),
   readFile: (file) => () => _fs.readFile(file, 'utf8'),
-  copyFile: (src, dest) => () => _fs.copyFile(src, dest),
   mkDir: (dirPath) => () => _fs.mkdir(dirPath, { recursive: true }),
   cpDir: (src, dest) => () => _fs.cp(src, dest, { recursive: true }),
   exists: (filePath) => () =>
@@ -173,56 +159,55 @@ const fs: FS = {
       .catch(() => false),
 };
 
-const rootDir = path.join(__dirname, '..', '..');
+// const naznaDir = '.nazna';
 
-const naznaDir = path.join(process.cwd(), '.nazna');
+// const doNothing: T.Task<unknown> = T.of(undefined);
 
-const copyFile = (src: string, dest: string) =>
-  fs.copyFile(path.join(rootDir, src), path.join(process.cwd(), dest));
+// const workflowsPath = '.github/workflows';
 
-const copyFileKeepPath = (p: string) => copyFile(p, p);
+// const releaseYamlPath = `${workflowsPath}/release.yaml`;
 
-const doNothing: T.Task<unknown> = T.of(undefined);
+const fixFile = (path: string, fixer: (inp: string) => string) =>
+  pipe(
+    fs.readFile(path),
+    T.map(fixer),
+    T.chain((content) => fs.writeFile(path, content))
+  );
 
-const workflowsPath = path.join(process.cwd(), '.github', 'workflows');
-
-const releaseYamlPath = path.join(workflowsPath, 'release.yaml');
-
-const fix = pipe(
-  T.Do,
-  T.chain(() => fs.writeFile('.releaserc.json', releaseRcFile)),
-  T.chainFirst(() =>
-    pipe(
-      fs.readFile('package.json'),
-      T.map(fixPackageJson),
-      T.chain((content) => fs.writeFile('package.json', content))
-    )
+const par = apply.sequenceS(T.ApplyPar)({
+  'write .releaserc.json': fs.writeFile('.releaserc.json', constants.releasercJson),
+  'write .envrc': fs.writeFile('.envrc', constants.releasercJson),
+  'write .eslintrc.json': fs.writeFile('.eslintrc.json', constants.eslintrcJson),
+  'write .npmrc': fs.writeFile('.npmrc', constants.npmrc),
+  'write tsconfig.json': fs.writeFile('tsconfig.json', constants.tsconfigJson),
+  'write .nazna/.gitconfig': fs.writeFile('.nazna/.gitconfig', constants.nazna.gitConfig),
+  'write .nazna/gitHooks/pre-push': fs.writeFile(
+    '.nazna/gitHooks/pre-push',
+    constants.nazna.gitHooks.prePush
   ),
-  T.chainFirst(() => copyFileKeepPath('.envrc')),
-  T.chainFirst(() => copyFileKeepPath('.eslintrc.json')),
-  T.chainFirst(() => copyFileKeepPath('.npmrc')),
-  T.chainFirst(() => copyFileKeepPath('.releaserc.json')),
-  T.chainFirst(() => copyFileKeepPath('tsconfig.json')),
-  T.chainFirst(() => fs.mkDir(naznaDir)),
-  T.chainFirst(() => copyFileKeepPath(path.join('.nazna', '.gitconfig'))),
-  T.chainFirst(() =>
-    fs.cpDir(
-      path.join(rootDir, '.nazna', 'gitHooks'),
-      path.join(process.cwd(), '.nazna', 'gitHooks')
-    )
-  ),
-  T.chainFirst(() =>
-    pipe(
-      fs.mkDir(workflowsPath),
-      T.chain(() => fs.exists(releaseYamlPath)),
-      T.chain((exists) => (exists ? doNothing : fs.writeFile(releaseYamlPath, releaseYamlFile)))
-    )
-  )
-);
+  'fix .package.json': fixFile('package.json', fixPackageJson),
+});
+
+// const fix = pipe(
+//   T.Do,
+//   T.chainFirst(() =>
+//     fs.cpDir(
+//       path.join(rootDir, '.nazna', 'gitHooks'),
+//       path.join(process.cwd(), '.nazna', 'gitHooks')
+//     )
+//   ),
+//   T.chainFirst(() =>
+//     pipe(
+//       fs.mkDir(workflowsPath),
+//       T.chain(() => fs.exists(releaseYamlPath)),
+//       T.chain((exists) => (exists ? doNothing : fs.writeFile(releaseYamlPath, releaseYamlFile)))
+//     )
+//   )
+// );
 
 export const cli: T.Task<unknown> = pipe(process.argv, readonlyArray.dropLeft(2), (argv) =>
   match(argv)
     .with(['build', 'cli'], () => fs.writeFile('dist/nazna', cliFile))
-    .with(['fix'], () => fix)
+    .with(['fix'], () => par)
     .otherwise((command) => pipe(`command not found: ${command}`, console.log, T.fromIO))
 );
