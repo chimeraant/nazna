@@ -1,6 +1,8 @@
 import {
   apply,
   console,
+  either as E,
+  json,
   ord,
   readonlyArray,
   readonlyRecord,
@@ -76,30 +78,31 @@ const { summon } = summonFor({});
 
 export const ReleaseYamlFile = summon((F) => F.strMap(F.unknown()));
 
-const fixReleaseYamlFile = flow(
-  yaml.load,
-  ReleaseYamlFile.type.decode,
-  (rawObj) => ({
-    ...rawObj,
-    name: 'Release',
-    on: {
-      push: {
-        branches: 'main',
+const fixReleaseYamlRun = (rawObj: Record<string, unknown>) =>
+  pipe(
+    {
+      ...rawObj,
+      name: 'Release',
+      on: {
+        push: {
+          branches: 'main',
+        },
+        pull_request: {
+          branches: 'main',
+        },
       },
-      pull_request: {
-        branches: 'main',
+      jobs: {
+        release: {
+          name: 'Release',
+          'runs-on': 'ubuntu-latest',
+          steps: requiredSteps,
+        },
       },
     },
-    jobs: {
-      release: {
-        name: 'Release',
-        'runs-on': 'ubuntu-latest',
-        steps: requiredSteps,
-      },
-    },
-  }),
-  (content) => yaml.dump(content, { noCompatMode: true })
-);
+    (content) => yaml.dump(content, { noCompatMode: true })
+  );
+
+const fixReleaseYamlFile = flow(yaml.load, ReleaseYamlFile.type.decode, E.map(fixReleaseYamlRun));
 
 const sortedRecord = flow(
   readonlyRecord.toEntries,
@@ -107,51 +110,62 @@ const sortedRecord = flow(
   readonlyRecord.fromEntries
 );
 
-const fixPackageJson = flow(
-  JSON.parse,
-  (p) => ({
-    ...p,
-    ...(typeof p.dependencies === 'object' ? { dependencies: sortedRecord(p.dependencies) } : {}),
-    ...{
-      devDependencies: sortedRecord({
-        ...p.devDependencies,
-        ...{
-          '@swc/cli': '^0.1.57',
-          '@swc/core': '^1.3.8',
-          eslint: '^8.25.0',
-          pnpm: '^7.13.4',
-          typescript: '^4.8.4',
-          vitest: '^0.24.1',
+const fixDependencies = (oldDependencies: unknown) =>
+  typeof oldDependencies === 'object' ? { dependencies: sortedRecord(oldDependencies) } : {};
+
+const objectOrElseEmpyObject = (obj: unknown) => (typeof obj === 'object' ? obj : {});
+
+const fixPackageJsonRun = (p: Record<string, unknown>) =>
+  pipe(
+    {
+      ...p,
+      ...fixDependencies(p['dependencies']),
+      ...{
+        devDependencies: sortedRecord({
+          ...objectOrElseEmpyObject(p['devDependencies']),
+          ...{
+            '@swc/cli': '^0.1.57',
+            '@swc/core': '^1.3.8',
+            eslint: '^8.25.0',
+            pnpm: '^7.13.4',
+            typescript: '^4.8.4',
+            vitest: '^0.24.1',
+          },
+        }),
+        scripts: sortedRecord({
+          ...objectOrElseEmpyObject(p['scripts']),
+          'build:es6': 'swc src --out-dir dist/es6 --source-maps',
+          'build:cjs': 'swc src --out-dir dist/cjs --source-maps --config module.type=commonjs',
+          'build:types':
+            'tsc src/**.ts --outDir dist/types --skipLibCheck --declaration' +
+            ' --declarationMap --emitDeclarationOnly --esModuleInterop',
+          build: 'pnpm build:types && pnpm build:es6 && pnpm build:cjs && nazna build cli',
+          fix: 'eslint --max-warnings=0 --ext .ts . --fix',
+          lint: 'eslint --max-warnings=0 --ext .ts .',
+          test: 'vitest',
+          postinstall: 'nazna fix',
+          'pre-push': 'CI=true pnpm install && pnpm build && pnpm lint && pnpm publish --dry-run',
+        }),
+        version: '0.0.0-semantic-release',
+        license: 'MIT',
+        types: './dist/types/index.d.ts',
+        main: './dist/cjs/index.js',
+        module: './dist/es6/index.js',
+        exports: {
+          require: './dist/cjs/index.js',
+          import: './dist/es6/index.js',
         },
-      }),
-      scripts: sortedRecord({
-        ...(p.scripts ?? {}),
-        'build:es6': 'swc src --out-dir dist/es6 --source-maps',
-        'build:cjs': 'swc src --out-dir dist/cjs --source-maps --config module.type=commonjs',
-        'build:types':
-          'tsc src/**.ts --outDir dist/types' +
-          ' --skipLibCheck --declaration --declarationMap --emitDeclarationOnly --esModuleInterop',
-        build: 'pnpm build:types && pnpm build:es6 && pnpm build:cjs && nazna build cli',
-        fix: 'eslint --max-warnings=0 --ext .ts . --fix',
-        lint: 'eslint --max-warnings=0 --ext .ts .',
-        test: 'vitest',
-        postinstall: 'nazna fix',
-        'pre-push': 'CI=true pnpm install && pnpm build && pnpm lint && pnpm publish --dry-run',
-      }),
-      version: '0.0.0-semantic-release',
-      license: 'MIT',
-      types: './dist/types/index.d.ts',
-      main: './dist/cjs/index.js',
-      module: './dist/es6/index.js',
-      exports: {
-        require: './dist/cjs/index.js',
-        import: './dist/es6/index.js',
+        files: ['dist'],
+        bin: './dist/cli.js',
       },
-      files: ['dist'],
-      bin: './dist/cli.js',
     },
-  }),
-  (obj) => JSON.stringify(obj, undefined, 2)
+    (obj) => JSON.stringify(obj, undefined, 2)
+  );
+
+const fixPackageJson = flow(
+  json.parse,
+  E.chainW(ReleaseYamlFile.type.decode),
+  E.map(fixPackageJsonRun)
 );
 
 type NamedTask<E, R> = readonly [string, TE.TaskEither<E, R>];
@@ -166,7 +180,7 @@ type FixJob = {
   readonly job: 'fix';
   readonly path: readonly string[];
   readonly defaultContent: string;
-  readonly fixer: (input: string) => string;
+  readonly fixer: (input: string) => E.Either<unknown, string>;
 };
 
 type ErrorJob = {
@@ -190,7 +204,7 @@ const fixTask = ({ path, fixer, defaultContent }: FixJob) =>
         err.code === 'ENOENT'
           ? writeTask({ job: 'write', path, content: defaultContent })
           : pipe(err, JSON.stringify, TE.left),
-      flow(fixer, fs.writeFile(path))
+      flow(fixer, T.of, TE.chain(fs.writeFile(path)))
     )
   );
 
@@ -234,13 +248,13 @@ const argvToJobs = (argv: readonly string[]): readonly Job[] =>
         job: 'fix',
         path: ['package.json'],
         fixer: fixPackageJson,
-        defaultContent: fixPackageJson('{}'),
+        defaultContent: fixPackageJsonRun({}),
       },
       {
         job: 'fix',
         path: ['.github', 'workflows', 'release.yaml'],
         fixer: fixReleaseYamlFile,
-        defaultContent: fixReleaseYamlFile(''),
+        defaultContent: fixReleaseYamlRun({}),
       },
     ])
     .otherwise((command): readonly Job[] => [
