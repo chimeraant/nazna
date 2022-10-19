@@ -244,7 +244,7 @@ const jobToNamedTask = (job: Job): NamedTask<unknown, unknown> => [
 const argvToJobs = (argv: readonly string[]): readonly Job[] =>
   match(argv)
     .with(['build', 'cli'], (_): readonly Job[] => [
-      { job: 'write and chmod', path: ['dist', 'nazna'], content: constants.cliFile },
+      { job: 'write and chmod', path: ['dist', 'cli.js'], content: constants.cliFile },
     ])
     .with(['fix'], (_): readonly Job[] => [
       { job: 'write', path: ['.releaserc.json'], content: constants.releasercJson },
