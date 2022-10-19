@@ -82,6 +82,7 @@ export const eslintrcJson = JSON.stringify(
       'prefer-arrow-callback': 'error',
       'prefer-destructuring': 'error',
       'prefer-template': 'error',
+      'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
       'unused-imports/no-unused-imports-ts': 'error',
       'unused-imports/no-unused-vars': [
