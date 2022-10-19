@@ -1,6 +1,7 @@
 import { summonFor } from '@morphic-ts/batteries/lib/summoner-BASTJ';
 import { either as E, taskEither as TE } from 'fp-ts';
 import { flow, identity } from 'fp-ts/function';
+import { Mode } from 'fs';
 import * as _fs from 'fs/promises';
 import * as pathModule from 'path';
 
@@ -43,4 +44,6 @@ export const fs = {
     ),
   mkDir: (path: readonly string[]) =>
     TE.tryCatch(() => _fs.mkdir(pathModule.join(...path), { recursive: true }), identity),
+  chmod: (path: readonly string[], mode: Mode) =>
+    TE.tryCatch(() => _fs.chmod(pathModule.join(...path), mode), identity),
 };

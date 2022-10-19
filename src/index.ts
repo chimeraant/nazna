@@ -170,6 +170,12 @@ const fixPackageJson = flow(
 
 type NamedTask<E, R> = readonly [string, TE.TaskEither<E, R>];
 
+type WriteAndChmodJob = {
+  readonly job: 'write and chmod';
+  readonly path: readonly string[];
+  readonly content: string;
+};
+
 type WriteJob = {
   readonly job: 'write';
   readonly path: readonly string[];
@@ -188,12 +194,18 @@ type ErrorJob = {
   readonly value: string;
 };
 
-type Job = WriteJob | FixJob | ErrorJob;
+type Job = WriteJob | FixJob | ErrorJob | WriteAndChmodJob;
 
 const writeTask = ({ path, content }: WriteJob) =>
   pipe(
     fs.mkDir(readonlyArray.dropRight(1)(path)),
     TE.chain((_) => fs.writeFile(path)(content))
+  );
+
+const writeAndChmodTask = ({ path, content }: WriteAndChmodJob) =>
+  pipe(
+    writeTask({ job: 'write', path, content }),
+    TE.chain((_) => fs.chmod(path, 755))
   );
 
 const fixTask = ({ path, fixer, defaultContent }: FixJob) =>
@@ -211,6 +223,7 @@ const fixTask = ({ path, fixer, defaultContent }: FixJob) =>
 const jobToStringTaskEither = (job: Job) =>
   match(job)
     .with({ job: 'write' }, writeTask)
+    .with({ job: 'write and chmod' }, writeAndChmodTask)
     .with({ job: 'fix' }, fixTask)
     .with({ job: 'error' }, ({ value }) => TE.left(value))
     .exhaustive();
@@ -220,6 +233,7 @@ const jobToName = (job: Job): string =>
     .with({ job: 'write' }, ({ path }) => `write ${pathModule.join(...path)}`)
     .with({ job: 'fix' }, ({ path }) => `fix ${pathModule.join(...path)}`)
     .with({ job: 'error' }, (_) => `error`)
+    .with({ job: 'write and chmod' }, ({ path }) => `write and chmod ${pathModule.join(...path)}`)
     .exhaustive();
 
 const jobToNamedTask = (job: Job): NamedTask<unknown, unknown> => [
@@ -230,7 +244,7 @@ const jobToNamedTask = (job: Job): NamedTask<unknown, unknown> => [
 const argvToJobs = (argv: readonly string[]): readonly Job[] =>
   match(argv)
     .with(['build', 'cli'], (_): readonly Job[] => [
-      { job: 'write', path: ['dist', 'nazna'], content: constants.cliFile },
+      { job: 'write and chmod', path: ['dist', 'nazna'], content: constants.cliFile },
     ])
     .with(['fix'], (_): readonly Job[] => [
       { job: 'write', path: ['.releaserc.json'], content: constants.releasercJson },
@@ -240,7 +254,7 @@ const argvToJobs = (argv: readonly string[]): readonly Job[] =>
       { job: 'write', path: ['tsconfig.json'], content: constants.tsconfigJson },
       { job: 'write', path: ['.nazna', '.gitconfig'], content: constants.nazna.gitConfig },
       {
-        job: 'write',
+        job: 'write and chmod',
         path: ['.nazna', 'gitHooks', 'pre-push'],
         content: constants.nazna.gitHooks.prePush,
       },
