@@ -2,6 +2,11 @@ import { pipe } from 'fp-ts/function';
 
 import { multiline } from './utils';
 
+export const cliFile = multiline(`
+#!/usr/bin/env node
+require("./cjs/index").cli(process.argv)();
+`);
+
 export const releasercJson = pipe(
   {
     branches: ['main'],

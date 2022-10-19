@@ -17,10 +17,6 @@ import { match } from 'ts-pattern';
 
 import * as constants from './constants';
 
-const cliFile = `#!/usr/bin/env node
-require("./cjs/index").cli();
-`;
-
 const requiredSteps = [
   {
     name: 'Checkout',
@@ -220,7 +216,7 @@ const jobToNamedTask = (job: Job): NamedTask => [jobToName(job), jobToStringTask
 const argvToJobs = (argv: readonly string[]): readonly Job[] =>
   match(argv)
     .with(['build', 'cli'], (_): readonly Job[] => [
-      { job: 'write', path: ['dist', 'nazna'], content: cliFile },
+      { job: 'write', path: ['dist', 'nazna'], content: constants.cliFile },
     ])
     .with(['fix'], (_): readonly Job[] => [
       { job: 'write', path: ['.releaserc.json'], content: constants.releasercJson },
