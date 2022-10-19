@@ -1,7 +1,6 @@
 import {
   apply,
   console,
-  either as E,
   ord,
   readonlyArray,
   readonlyRecord,
@@ -10,12 +9,12 @@ import {
   taskEither as TE,
 } from 'fp-ts';
 import { flow, pipe } from 'fp-ts/function';
-import * as _fs from 'fs/promises';
 import * as yaml from 'js-yaml';
 import * as pathModule from 'path';
 import { match } from 'ts-pattern';
 
 import * as constants from './constants';
+import { fs } from './fs';
 
 const requiredSteps = [
   {
@@ -71,27 +70,34 @@ const requiredSteps = [
   },
 ];
 
-export const releaseYamlFile = yaml.dump(
-  {
-    name: 'Release',
-    on: {
-      push: {
-        branches: 'main',
+import { summonFor } from '@morphic-ts/batteries/lib/summoner-BASTJ';
+
+const { summon } = summonFor({});
+
+export const ReleaseYamlFile = summon((F) => F.strMap(F.unknown()));
+
+const fixReleaseYamlFile = (raw: string) =>
+  pipe(raw, yaml.load, ReleaseYamlFile.type.decode, (rawObj) =>
+    yaml.dump({
+      ...rawObj,
+      name: 'Release',
+      on: {
+        push: {
+          branches: 'main',
+        },
+        pull_request: {
+          branches: 'main',
+        },
       },
-      pull_request: {
-        branches: 'main',
+      jobs: {
+        release: {
+          name: 'Release',
+          'runs-on': 'ubuntu-latest',
+          steps: requiredSteps,
+        },
       },
-    },
-    jobs: {
-      release: {
-        name: 'Release',
-        'runs-on': 'ubuntu-latest',
-        steps: requiredSteps,
-      },
-    },
-  },
-  { noCompatMode: true }
-);
+    })
+  );
 
 const sortedRecord = flow(
   readonlyRecord.toEntries,
@@ -146,28 +152,7 @@ const fixPackageJson = flow(
   (obj) => JSON.stringify(obj, undefined, 2)
 );
 
-type StringTaskEither = TE.TaskEither<string, string>;
-
-const toStringTaskEither =
-  (t: T.Task<unknown>): StringTaskEither =>
-  () =>
-    t().then(flow(String, E.right)).catch(flow(String, E.left));
-
-type FS = {
-  readonly writeFile: (path: readonly string[]) => (data: string) => StringTaskEither;
-  readonly readFile: (path: readonly string[]) => StringTaskEither;
-  readonly mkDir: (path: readonly string[]) => StringTaskEither;
-};
-
-const fs: FS = {
-  writeFile: (path) => (data) =>
-    toStringTaskEither(() => _fs.writeFile(pathModule.join(...path), data, { encoding: 'utf8' })),
-  readFile: (path) => toStringTaskEither(() => _fs.readFile(pathModule.join(...path), 'utf8')),
-  mkDir: (path) =>
-    toStringTaskEither(() => _fs.mkdir(pathModule.join(...path), { recursive: true })),
-};
-
-type NamedTask = readonly [string, StringTaskEither];
+type NamedTask<E, R> = readonly [string, TE.TaskEither<E, R>];
 
 type WriteJob = {
   readonly job: 'write';
@@ -178,17 +163,9 @@ type WriteJob = {
 type FixJob = {
   readonly job: 'fix';
   readonly path: readonly string[];
+  readonly defaultContent: string;
   readonly fixer: (input: string) => string;
 };
-
-const writeTask = ({ path, content }: WriteJob): StringTaskEither =>
-  pipe(
-    fs.mkDir(readonlyArray.dropRight(1)(path)),
-    TE.chain((_) => fs.writeFile(path)(content))
-  );
-
-const fixTask = ({ path, fixer }: FixJob): StringTaskEither =>
-  pipe(path, fs.readFile, TE.map(fixer), TE.chain(fs.writeFile(path)));
 
 type ErrorJob = {
   readonly job: 'error';
@@ -197,7 +174,25 @@ type ErrorJob = {
 
 type Job = WriteJob | FixJob | ErrorJob;
 
-const jobToStringTaskEither = (job: Job): StringTaskEither =>
+const writeTask = ({ path, content }: WriteJob) =>
+  pipe(
+    fs.mkDir(readonlyArray.dropRight(1)(path)),
+    TE.chain((_) => fs.writeFile(path)(content))
+  );
+
+const fixTask = ({ path, fixer, defaultContent }: FixJob) =>
+  pipe(
+    fs.readFile(path),
+    TE.foldW(
+      (err) =>
+        err.code === 'ENOENT'
+          ? writeTask({ job: 'write', path, content: defaultContent })
+          : pipe(err, JSON.stringify, TE.left),
+      flow(fixer, fs.writeFile(path))
+    )
+  );
+
+const jobToStringTaskEither = (job: Job) =>
   match(job)
     .with({ job: 'write' }, writeTask)
     .with({ job: 'fix' }, fixTask)
@@ -206,12 +201,15 @@ const jobToStringTaskEither = (job: Job): StringTaskEither =>
 
 const jobToName = (job: Job): string =>
   match(job)
-    .with({ job: 'write' }, ({ path }) => `write ${path}`)
-    .with({ job: 'fix' }, ({ path }) => `fix ${path}`)
+    .with({ job: 'write' }, ({ path }) => `write ${pathModule.join(...path)}`)
+    .with({ job: 'fix' }, ({ path }) => `fix ${pathModule.join(...path)}`)
     .with({ job: 'error' }, (_) => `error`)
     .exhaustive();
 
-const jobToNamedTask = (job: Job): NamedTask => [jobToName(job), jobToStringTaskEither(job)];
+const jobToNamedTask = (job: Job): NamedTask<unknown, unknown> => [
+  jobToName(job),
+  jobToStringTaskEither(job),
+];
 
 const argvToJobs = (argv: readonly string[]): readonly Job[] =>
   match(argv)
@@ -230,8 +228,18 @@ const argvToJobs = (argv: readonly string[]): readonly Job[] =>
         path: ['.nazna', 'gitHooks', 'pre-push'],
         content: constants.nazna.gitHooks.prePush,
       },
-      { job: 'fix', path: ['package.json'], fixer: fixPackageJson },
-      { job: 'fix', path: ['.github', 'workflows', 'release.yaml'], fixer: fixPackageJson },
+      {
+        job: 'fix',
+        path: ['package.json'],
+        fixer: fixPackageJson,
+        defaultContent: fixPackageJson(JSON.stringify({})),
+      },
+      {
+        job: 'fix',
+        path: ['.github', 'workflows', 'release.yaml'],
+        fixer: fixReleaseYamlFile,
+        defaultContent: fixReleaseYamlFile(yaml.dump({})),
+      },
     ])
     .otherwise((command): readonly Job[] => [
       { job: 'error', value: `command not found: ${command}` },
@@ -239,20 +247,20 @@ const argvToJobs = (argv: readonly string[]): readonly Job[] =>
 
 const strictTaskLog = (str: string): T.Task<void> => pipe(str, console.log, T.fromIO);
 
-const showStringTaskEitherRecord = pipe(
-  E.getShow(string.Show, string.Show),
-  readonlyRecord.getShow(string.Ord),
-  (Show) => Show.show
-);
+type Process = typeof process;
 
-export const cli = (argv: readonly string[]): T.Task<void> =>
+export const cli = ({
+  process,
+}: {
+  readonly process: { readonly argv: Process['argv'] };
+}): T.Task<void> =>
   pipe(
-    argv,
+    process.argv,
     readonlyArray.dropLeft(2),
     argvToJobs,
     readonlyArray.map(jobToNamedTask),
     readonlyRecord.fromEntries,
     apply.sequenceS(T.ApplyPar),
-    T.map(showStringTaskEitherRecord),
+    T.map((result) => JSON.stringify(result, undefined, 2)),
     T.chain(strictTaskLog)
   );
