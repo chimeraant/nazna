@@ -18,6 +18,8 @@ specifiers:
   fp-ts: ^2.12.3
   fp-ts-std: ^0.15.0
   js-yaml: ^4.1.0
+  monocle-ts: ^2.3.13
+  newtype-ts: ^0.3.5
   pnpm: ^7.13.4
   prettier: ^2.7.1
   ts-pattern: ^4.0.5
@@ -38,6 +40,8 @@ dependencies:
   fp-ts: 2.12.3
   fp-ts-std: 0.15.0_3rwmfr4cgglgwketcdxvriy3mq
   js-yaml: 4.1.0
+  monocle-ts: 2.3.13_fp-ts@2.12.3
+  newtype-ts: 0.3.5_x3dhd2jyfdvkp6zhnkjzhfb2vy
   prettier: 2.7.1
   ts-pattern: 4.0.5
 
