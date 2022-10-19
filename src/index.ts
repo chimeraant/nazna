@@ -1,3 +1,4 @@
+import { summonFor } from '@morphic-ts/batteries/lib/summoner-ESBST';
 import {
   apply,
   console,
@@ -71,8 +72,6 @@ const requiredSteps = [
     run: 'npx semantic-release',
   },
 ];
-
-import { summonFor } from '@morphic-ts/batteries/lib/summoner-BASTJ';
 
 const { summon } = summonFor({});
 
