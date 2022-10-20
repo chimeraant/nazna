@@ -133,51 +133,49 @@ const fixPackageJson = (content: string) =>
       pipe(getRepoUrl, TE.map(flow(string.split('\n'), readonlyNonEmptyArray.head)))
     ),
     TE.map(({ packageJson, repoUrl }) =>
-      pipe(
-        {
-          ...packageJson,
-          ...fixDependencies(packageJson['dependencies']),
-          ...{
-            devDependencies: sortedRecord({
-              ...objectOrElseEmpyObject(packageJson['devDependencies']),
-              ...{
-                '@swc/cli': '^0.1.57',
-                '@swc/core': '^1.3.8',
-                eslint: '^8.25.0',
-                pnpm: '^7.13.4',
-                typescript: '^4.8.4',
-                vitest: '^0.24.1',
-              },
-            }),
-            scripts: sortedRecord({
-              ...objectOrElseEmpyObject(packageJson['scripts']),
-              'build:es6': 'swc src --out-dir dist/es6 --source-maps',
-              'build:cjs': 'swc src --out-dir dist/cjs --source-maps --config module.type=commonjs',
-              'build:types': 'tsc --project tsconfig.dist.json',
-              build: 'pnpm build:types && pnpm build:es6 && pnpm build:cjs && nazna build cli',
-              fix: 'eslint --max-warnings=0 --ext .ts . --fix',
-              lint: 'eslint --max-warnings=0 --ext .ts .',
-              test: 'vitest',
-              'pre-push:dirty': 'CI=true pnpm install && pnpm build && pnpm lint',
-              'pre-push': 'pnpm pre-push:dirty && pnpm publish --dry-run',
-            }),
-            repository: repoUrl,
-            version: '0.0.0-semantic-release',
-            license: 'MIT',
-            types: './dist/types/index.d.ts',
-            main: './dist/cjs/index.js',
-            module: './dist/es6/index.js',
-            exports: {
-              require: './dist/cjs/index.js',
-              import: './dist/es6/index.js',
+      pipe({
+        ...packageJson,
+        ...fixDependencies(packageJson['dependencies']),
+        ...{
+          devDependencies: sortedRecord({
+            ...objectOrElseEmpyObject(packageJson['devDependencies']),
+            ...{
+              '@swc/cli': '^0.1.57',
+              '@swc/core': '^1.3.8',
+              eslint: '^8.25.0',
+              pnpm: '^7.13.4',
+              typescript: '^4.8.4',
+              vitest: '^0.24.1',
             },
-            files: ['dist'],
-            bin: './dist/cli.js',
+          }),
+          scripts: sortedRecord({
+            ...objectOrElseEmpyObject(packageJson['scripts']),
+            'build:es6': 'swc src --out-dir dist/es6 --source-maps',
+            'build:cjs': 'swc src --out-dir dist/cjs --source-maps --config module.type=commonjs',
+            'build:types': 'tsc --project tsconfig.dist.json',
+            build: 'pnpm build:types && pnpm build:es6 && pnpm build:cjs && nazna build cli',
+            fix: 'eslint --max-warnings=0 --ext .ts . --fix',
+            lint: 'eslint --max-warnings=0 --ext .ts .',
+            test: 'vitest',
+            'pre-push:dirty': 'CI=true pnpm install && pnpm build && pnpm lint',
+            'pre-push': 'pnpm pre-push:dirty && pnpm publish --dry-run',
+          }),
+          repository: repoUrl,
+          version: '0.0.0-semantic-release',
+          license: 'MIT',
+          types: './dist/types/index.d.ts',
+          main: './dist/cjs/index.js',
+          module: './dist/es6/index.js',
+          exports: {
+            require: './dist/cjs/index.js',
+            import: './dist/es6/index.js',
           },
+          files: ['dist'],
+          bin: './dist/cli.js',
         },
-        (obj) => JSON.stringify(obj, undefined, 2)
-      )
-    )
+      })
+    ),
+    TE.chainEitherK((obj) => E.tryCatch(() => JSON.stringify(obj, undefined, 2), identity))
   );
 
 const fixGitignore = flow(
