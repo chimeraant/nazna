@@ -5,6 +5,5 @@ import * as std from 'fp-ts-std';
 export const multiline = flow(
   string.split('\n'),
   readonlyArray.dropLeft(1),
-  readonlyArray.dropRight(1),
   std.readonlyArray.join('\n')
 );
