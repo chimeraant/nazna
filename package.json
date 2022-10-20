@@ -38,6 +38,7 @@
     "build:cli": "printf '#!/usr/bin/env node\nrequire(\"./cjs/index\").cli({process})();' > ./dist/cli.js && chmod +x ./dist/cli.js",
     "build:es6": "swc src --out-dir dist/es6 --source-maps",
     "build:types": "tsc --project tsconfig.dist.json",
+    "test:fix": "pnpm build && ./dist/cli.js fix && git checkout -- package.json .github/workflows/release.yaml",
     "fix": "eslint --max-warnings=0 --ext .ts . --fix",
     "lint": "eslint --max-warnings=0 --ext .ts .",
     "pre-push": "pnpm pre-push:dirty && pnpm publish --dry-run",
