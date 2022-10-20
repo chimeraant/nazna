@@ -217,18 +217,33 @@ const fixShellNix = flow(
   TE.right
 );
 
-const writeFile = (path: readonly string[]) => (content: string) =>
+const getDirPath = readonlyArray.dropRight(1);
+
+const safeWriteFile = (filePath: readonly string[], content: string) =>
   pipe(
-    TE.Do,
-    TE.bindW('a', () => fs.mkDir(readonlyArray.dropRight(1)(path))),
-    TE.bindW('b', () => fs.writeFile(path)(content))
+    T.Do,
+    T.bind(`mkDir`, () => pipe(filePath, getDirPath, fs.mkDir)),
+    T.bind(`writeFile`, () => fs.writeFile(filePath, content)),
+    T.map(apply.sequenceS(E.Apply))
   );
 
 const writeAndChmodFile = (path: readonly string[], content: string) =>
   pipe(
+    T.Do,
+    T.bind(`safeWriteFile`, () => safeWriteFile(path, content)),
+    T.bind(`chmod`, () => fs.chmod(path, 0o755)),
+    T.map(apply.sequenceS(E.Apply))
+  );
+
+const fixAndWrite = (
+  path: readonly string[],
+  fixer: (input: string) => TE.TaskEither<unknown, string>,
+  content: string
+) =>
+  pipe(
     TE.Do,
-    TE.bindW('a', () => writeFile(path)(content)),
-    TE.bindW('b', () => fs.chmod(path, 0o755))
+    TE.bind('fixerResult', () => fixer(content)),
+    TE.bind(`safeWriteFile`, ({ fixerResult }) => safeWriteFile(path, fixerResult))
   );
 
 const fixFile = (
@@ -244,10 +259,10 @@ const fixFile = (
         fileReadResult,
         E.foldW(
           (err) =>
-            err.code === 'ENOENT'
-              ? pipe(emptyContent, fixer, TE.chain(writeFile(path)))
-              : TE.left(err),
-          flow(fixer, TE.chain(writeFile(path)))
+            match(err)
+              .with({ code: 'ENOENT' }, () => fixAndWrite(path, fixer, emptyContent))
+              .otherwise(TE.left),
+          (fileContent) => fixAndWrite(path, fixer, fileContent)
         )
       )
     ),
@@ -267,25 +282,33 @@ const argvToTask = (argv: readonly string[]): TE.TaskEither<unknown, unknown> =>
     .with(['build', 'cli'], (_) => writeAndChmodFile(['dist', 'cli.js'], constants.cliFile))
     .with(['fix'], (_) =>
       SParTE({
-        a: writeFile(['.releaserc.json'])(constants.releasercJson),
-        b: writeFile(['.eslintrc.json'])(constants.eslintrcJson),
-        c: writeFile(['.npmrc'])(constants.npmrc),
-        d: writeFile(['tsconfig.json'])(constants.tsconfigJson),
-        e: writeFile(['tsconfig.dist.json'])(constants.tsconfiDistJson),
-        f: writeFile(['.nazna', '.gitconfig'])(constants.nazna.gitConfig),
-        g: writeAndChmodFile(['.nazna', 'gitHooks', 'pre-push'], constants.nazna.gitHooks.prePush),
-        h: fixFile(['package.json'], fixPackageJson, '{}'),
-        i: fixFile(['.github', 'workflows', 'release.yaml'], fixReleaseYamlFile, 'name: Release'),
-        j: fixFile(['.gitignore'], fixGitignore, ''),
-        k: pipe(
-          TE.Do,
-          TE.bindW('a', () =>
+        'fix .releaserc.json': safeWriteFile(['.releaserc.json'], constants.releasercJson),
+        'fix .eslintrc.json': safeWriteFile(['.eslintrc.json'], constants.eslintrcJson),
+        'fix .npmrc': safeWriteFile(['.npmrc'], constants.npmrc),
+        'fix tsconfig.json': safeWriteFile(['tsconfig.json'], constants.tsconfigJson),
+        'fix tsconfig.dist.json': safeWriteFile(['tsconfig.dist.json'], constants.tsconfiDistJson),
+        'fix .nazna/.gitconfig': safeWriteFile(['.nazna', '.gitconfig'], constants.nazna.gitConfig),
+        'fix .nazna/gitHooks/pre-push': writeAndChmodFile(
+          ['.nazna', 'gitHooks', 'pre-push'],
+          constants.nazna.gitHooks.prePush
+        ),
+        'fix package.json': fixFile(['package.json'], fixPackageJson, '{}'),
+        'fix .github/workflows/release.yaml': fixFile(
+          ['.github', 'workflows', 'release.yaml'],
+          fixReleaseYamlFile,
+          'name: Release'
+        ),
+        'fix .gitignore': fixFile(['.gitignore'], fixGitignore, ''),
+        'fix direnv': pipe(
+          T.Do,
+          T.bind('fix .envrc and shell.nix', () =>
             SParTE({
-              k: writeFile(['.envrc'])(constants.envrc),
-              l: fixFile(['shell.nix'], fixShellNix, ''),
+              safeWriteFile: safeWriteFile(['.envrc'], constants.envrc),
+              fixFile: fixFile(['shell.nix'], fixShellNix, ''),
             })
           ),
-          TE.bindW('b', () => spawn('direnv', ['allow']))
+          T.bind('direnv allow', () => spawn('direnv', ['allow'])),
+          T.map(apply.sequenceS(E.Apply))
         ),
       })
     )

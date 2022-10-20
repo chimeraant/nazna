@@ -29,7 +29,7 @@ const mapReadFileErr = (err: unknown): ReadFileErr =>
   ReadFileError.type.is(err) ? err : { code: 'unknown', value: err };
 
 export const fs = {
-  writeFile: (path: readonly string[]) => (data: string) =>
+  writeFile: (path: readonly string[], data: string) =>
     TE.tryCatch(
       () => _fs.writeFile(pathModule.join(...path), data, { encoding: 'utf8' }),
       identity
