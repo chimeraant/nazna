@@ -276,8 +276,6 @@ const argvToTask = (argv: readonly string[]): TE.TaskEither<unknown, unknown> =>
     )
     .otherwise((command) => TE.left(`command not found: ${command}`));
 
-const strictTaskLog = (str: string): T.Task<void> => pipe(str, console.log, T.fromIO);
-
 type Process = typeof process;
 
 export const cli = ({
@@ -289,6 +287,5 @@ export const cli = ({
     process.argv,
     readonlyArray.dropLeft(2),
     argvToTask,
-    T.map((result) => JSON.stringify(result, undefined, 2)),
-    T.chain(strictTaskLog)
+    TE.foldW(flow(console.error, T.fromIO), flow(console.log, T.fromIO))
   );
