@@ -245,7 +245,7 @@ const fixTask = ({ path, fixer, emptyContent }: FixJob) =>
       (err) =>
         err.code === 'ENOENT'
           ? pipe(emptyContent, fixer, TE.chain(fs.writeFile(path)))
-          : pipe(err, JSON.stringify, TE.left),
+          : TE.left(err),
       flow(fixer, TE.chain(fs.writeFile(path)))
     )
   );
