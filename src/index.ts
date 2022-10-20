@@ -15,7 +15,6 @@ import {
 import { flow, pipe } from 'fp-ts/function';
 import * as std from 'fp-ts-std';
 import * as yaml from 'js-yaml';
-import * as pathModule from 'path';
 import { simpleGit } from 'simple-git';
 import { match } from 'ts-pattern';
 
@@ -220,132 +219,52 @@ const fixShellNix = flow(
   TE.right
 );
 
-type NamedTask<E, R> = readonly [string, TE.TaskEither<E, R>];
-
-type WriteAndChmodJob = {
-  readonly job: 'write and chmod';
-  readonly path: readonly string[];
-  readonly content: string;
-};
-
-type WriteJob = {
-  readonly job: 'write';
-  readonly path: readonly string[];
-  readonly content: string;
-};
-
-type FixJob = {
-  readonly job: 'fix';
-  readonly path: readonly string[];
-  readonly emptyContent: string;
-  readonly fixer: (input: string) => TE.TaskEither<unknown, string>;
-};
-
-type ErrorJob = {
-  readonly job: 'error';
-  readonly value: string;
-};
-
-type Job = WriteJob | FixJob | ErrorJob | WriteAndChmodJob;
-
-const writeTask = ({ path, content }: WriteJob) =>
+const writeFile = (path: readonly string[]) => (content: string) =>
   pipe(
     fs.mkDir(readonlyArray.dropRight(1)(path)),
     TE.chain((_) => fs.writeFile(path)(content))
   );
 
-const writeAndChmodTask = ({ path, content }: WriteAndChmodJob) =>
+const writeAndChmodFile = (path: readonly string[], content: string) =>
   pipe(
-    writeTask({ job: 'write', path, content }),
+    writeFile(path)(content),
     TE.chain((_) => fs.chmod(path, 0o755))
   );
 
-const fixTask = ({ path, fixer, emptyContent }: FixJob) =>
+const fixFile = (
+  path: readonly string[],
+  fixer: (input: string) => TE.TaskEither<unknown, string>,
+  emptyContent: string
+) =>
   pipe(
     fs.readFile(path),
     TE.foldW(
       (err) =>
-        err.code === 'ENOENT'
-          ? pipe(
-              emptyContent,
-              fixer,
-              TE.chain((content) => writeTask({ path, content, job: 'write' }))
-            )
-          : TE.left(err),
-      flow(
-        fixer,
-        TE.chain((content) => writeTask({ path, content, job: 'write' }))
-      )
+        err.code === 'ENOENT' ? pipe(emptyContent, fixer, TE.chain(writeFile(path))) : TE.left(err),
+      flow(fixer, TE.chain(writeFile(path)))
     )
   );
 
-const jobToStringTaskEither = (job: Job) =>
-  match(job)
-    .with({ job: 'write' }, writeTask)
-    .with({ job: 'write and chmod' }, writeAndChmodTask)
-    .with({ job: 'fix' }, fixTask)
-    .with({ job: 'error' }, ({ value }) => TE.left(value))
-    .exhaustive();
-
-const jobToName = (job: Job): string =>
-  match(job)
-    .with({ job: 'write' }, ({ path }) => `write ${pathModule.join(...path)}`)
-    .with({ job: 'fix' }, ({ path }) => `fix ${pathModule.join(...path)}`)
-    .with({ job: 'error' }, (_) => `error`)
-    .with({ job: 'write and chmod' }, ({ path }) => `write and chmod ${pathModule.join(...path)}`)
-    .exhaustive();
-
-const jobToNamedTask = (job: Job): NamedTask<unknown, unknown> => [
-  jobToName(job),
-  jobToStringTaskEither(job),
-];
-
-const argvToJobs = (argv: readonly string[]): readonly Job[] =>
+const argvToTask = (argv: readonly string[]): TE.TaskEither<unknown, unknown> =>
   match(argv)
-    .with(['build', 'cli'], (_): readonly Job[] => [
-      { job: 'write and chmod', path: ['dist', 'cli.js'], content: constants.cliFile },
-    ])
-    .with(['fix'], (_): readonly Job[] => [
-      { job: 'write', path: ['.releaserc.json'], content: constants.releasercJson },
-      { job: 'write', path: ['.envrc'], content: constants.envrc },
-      { job: 'write', path: ['.eslintrc.json'], content: constants.eslintrcJson },
-      { job: 'write', path: ['.npmrc'], content: constants.npmrc },
-      { job: 'write', path: ['tsconfig.json'], content: constants.tsconfigJson },
-      { job: 'write', path: ['tsconfig.dist.json'], content: constants.tsconfiDistJson },
-      { job: 'write', path: ['.nazna', '.gitconfig'], content: constants.nazna.gitConfig },
-      {
-        job: 'write and chmod',
-        path: ['.nazna', 'gitHooks', 'pre-push'],
-        content: constants.nazna.gitHooks.prePush,
-      },
-      {
-        job: 'fix',
-        path: ['package.json'],
-        fixer: fixPackageJson,
-        emptyContent: '{}',
-      },
-      {
-        job: 'fix',
-        path: ['.github', 'workflows', 'release.yaml'],
-        fixer: fixReleaseYamlFile,
-        emptyContent: 'name: Release',
-      },
-      {
-        job: 'fix',
-        path: ['.gitignore'],
-        fixer: fixGitignore,
-        emptyContent: '',
-      },
-      {
-        job: 'fix',
-        path: ['shell.nix'],
-        fixer: fixShellNix,
-        emptyContent: '',
-      },
-    ])
-    .otherwise((command): readonly Job[] => [
-      { job: 'error', value: `command not found: ${command}` },
-    ]);
+    .with(['build', 'cli'], (_) => writeAndChmodFile(['dist', 'cli.js'], constants.cliFile))
+    .with(['fix'], (_) =>
+      apply.sequenceT(TE.ApplyPar)(
+        writeFile(['.releaserc.json'])(constants.releasercJson),
+        writeFile(['.envrc'])(constants.envrc),
+        writeFile(['.eslintrc.json'])(constants.eslintrcJson),
+        writeFile(['.npmrc'])(constants.npmrc),
+        writeFile(['tsconfig.json'])(constants.tsconfigJson),
+        writeFile(['tsconfig.dist.json'])(constants.tsconfiDistJson),
+        writeFile(['.nazna', '.gitconfig'])(constants.nazna.gitConfig),
+        writeAndChmodFile(['.nazna', 'gitHooks', 'pre-push'], constants.nazna.gitHooks.prePush),
+        fixFile(['package.json'], fixPackageJson, '{}'),
+        fixFile(['.github', 'workflows', 'release.yaml'], fixReleaseYamlFile, 'name: Release'),
+        fixFile(['.gitignore'], fixGitignore, ''),
+        fixFile(['shell.nix'], fixShellNix, '')
+      )
+    )
+    .otherwise((command) => TE.left(`command not found: ${command}`));
 
 const strictTaskLog = (str: string): T.Task<void> => pipe(str, console.log, T.fromIO);
 
@@ -359,10 +278,7 @@ export const cli = ({
   pipe(
     process.argv,
     readonlyArray.dropLeft(2),
-    argvToJobs,
-    readonlyArray.map(jobToNamedTask),
-    readonlyRecord.fromEntries,
-    apply.sequenceS(T.ApplyPar),
+    argvToTask,
     T.map((result) => JSON.stringify(result, undefined, 2)),
     T.chain(strictTaskLog)
   );
