@@ -6,6 +6,7 @@ import {
   json,
   ord,
   readonlyArray,
+  readonlyNonEmptyArray,
   readonlyRecord,
   string,
   task as T,
@@ -15,6 +16,7 @@ import { flow, pipe } from 'fp-ts/function';
 import * as std from 'fp-ts-std';
 import * as yaml from 'js-yaml';
 import * as pathModule from 'path';
+import { simpleGit } from 'simple-git';
 import { match } from 'ts-pattern';
 
 import * as constants from './constants';
@@ -78,31 +80,35 @@ const { summon } = summonFor({});
 
 export const ReleaseYamlFile = summon((F) => F.strMap(F.unknown()));
 
-const fixReleaseYamlRun = (rawObj: Record<string, unknown>) =>
-  pipe(
-    {
-      ...rawObj,
-      name: 'Release',
-      on: {
-        push: {
-          branches: 'main',
+const fixReleaseYamlFile = flow(
+  yaml.load,
+  ReleaseYamlFile.type.decode,
+  E.map((rawObj) =>
+    pipe(
+      {
+        ...rawObj,
+        name: 'Release',
+        on: {
+          push: {
+            branches: 'main',
+          },
+          pull_request: {
+            branches: 'main',
+          },
         },
-        pull_request: {
-          branches: 'main',
+        jobs: {
+          release: {
+            name: 'Release',
+            'runs-on': 'ubuntu-latest',
+            steps: requiredSteps,
+          },
         },
       },
-      jobs: {
-        release: {
-          name: 'Release',
-          'runs-on': 'ubuntu-latest',
-          steps: requiredSteps,
-        },
-      },
-    },
-    (content) => yaml.dump(content, { noCompatMode: true })
-  );
-
-const fixReleaseYamlFile = flow(yaml.load, ReleaseYamlFile.type.decode, E.map(fixReleaseYamlRun));
+      (content) => yaml.dump(content, { noCompatMode: true })
+    )
+  ),
+  TE.fromEither
+);
 
 const sortedRecord = flow(
   readonlyRecord.toEntries,
@@ -115,57 +121,65 @@ const fixDependencies = (oldDependencies: unknown) =>
 
 const objectOrElseEmpyObject = (obj: unknown) => (typeof obj === 'object' ? obj ?? {} : {});
 
-const fixPackageJsonRun = (p: Record<string, unknown>) =>
-  pipe(
-    {
-      ...p,
-      ...fixDependencies(p['dependencies']),
-      ...{
-        devDependencies: sortedRecord({
-          ...objectOrElseEmpyObject(p['devDependencies']),
-          ...{
-            '@swc/cli': '^0.1.57',
-            '@swc/core': '^1.3.8',
-            eslint: '^8.25.0',
-            pnpm: '^7.13.4',
-            typescript: '^4.8.4',
-            vitest: '^0.24.1',
-          },
-        }),
-        scripts: sortedRecord({
-          ...objectOrElseEmpyObject(p['scripts']),
-          'build:es6': 'swc src --out-dir dist/es6 --source-maps',
-          'build:cjs': 'swc src --out-dir dist/cjs --source-maps --config module.type=commonjs',
-          'build:types': 'tsc --project tsconfig.dist.json',
-          build: 'pnpm build:types && pnpm build:es6 && pnpm build:cjs && nazna build cli',
-          fix: 'eslint --max-warnings=0 --ext .ts . --fix',
-          lint: 'eslint --max-warnings=0 --ext .ts .',
-          test: 'vitest',
-          postinstall: 'nazna fix',
-          'pre-push:dirty': 'CI=true pnpm install && pnpm build && pnpm lint',
-          'pre-push': 'pnpm pre-push:dirty && pnpm publish --dry-run',
-        }),
-        version: '0.0.0-semantic-release',
-        license: 'MIT',
-        types: './dist/types/index.d.ts',
-        main: './dist/cjs/index.js',
-        module: './dist/es6/index.js',
-        exports: {
-          require: './dist/cjs/index.js',
-          import: './dist/es6/index.js',
-        },
-        files: ['dist'],
-        bin: './dist/cli.js',
-      },
-    },
-    (obj) => JSON.stringify(obj, undefined, 2)
-  );
+const getRepoUrl = TE.tryCatch(() => simpleGit().listRemote(['--get-url', 'origin']), String);
 
-const fixPackageJson = flow(
-  json.parse,
-  E.chainW(ReleaseYamlFile.type.decode),
-  E.map(fixPackageJsonRun)
-);
+const fixPackageJson = (content: string) =>
+  pipe(
+    TE.Do,
+    TE.bindW('packageJson', () =>
+      pipe(content, json.parse, E.chainW(ReleaseYamlFile.type.decode), TE.fromEither)
+    ),
+    TE.bindW('repoUrl', () =>
+      pipe(getRepoUrl, TE.map(flow(string.split('\n'), readonlyNonEmptyArray.head)))
+    ),
+    TE.map(({ packageJson, repoUrl }) =>
+      pipe(
+        {
+          ...packageJson,
+          ...fixDependencies(packageJson['dependencies']),
+          ...{
+            devDependencies: sortedRecord({
+              ...objectOrElseEmpyObject(packageJson['devDependencies']),
+              ...{
+                '@swc/cli': '^0.1.57',
+                '@swc/core': '^1.3.8',
+                eslint: '^8.25.0',
+                pnpm: '^7.13.4',
+                typescript: '^4.8.4',
+                vitest: '^0.24.1',
+              },
+            }),
+            scripts: sortedRecord({
+              ...objectOrElseEmpyObject(packageJson['scripts']),
+              'build:es6': 'swc src --out-dir dist/es6 --source-maps',
+              'build:cjs': 'swc src --out-dir dist/cjs --source-maps --config module.type=commonjs',
+              'build:types': 'tsc --project tsconfig.dist.json',
+              build: 'pnpm build:types && pnpm build:es6 && pnpm build:cjs && nazna build cli',
+              fix: 'eslint --max-warnings=0 --ext .ts . --fix',
+              lint: 'eslint --max-warnings=0 --ext .ts .',
+              test: 'vitest',
+              postinstall: 'nazna fix',
+              'pre-push:dirty': 'CI=true pnpm install && pnpm build && pnpm lint',
+              'pre-push': 'pnpm pre-push:dirty && pnpm publish --dry-run',
+            }),
+            repository: repoUrl,
+            version: '0.0.0-semantic-release',
+            license: 'MIT',
+            types: './dist/types/index.d.ts',
+            main: './dist/cjs/index.js',
+            module: './dist/es6/index.js',
+            exports: {
+              require: './dist/cjs/index.js',
+              import: './dist/es6/index.js',
+            },
+            files: ['dist'],
+            bin: './dist/cli.js',
+          },
+        },
+        (obj) => JSON.stringify(obj, undefined, 2)
+      )
+    )
+  );
 
 const fixGitignore = flow(
   string.split('\n'),
@@ -180,7 +194,8 @@ const fixGitignore = flow(
     'tsconfig.json',
     'tsconfig.dist.json',
   ]),
-  std.readonlyArray.join('\n')
+  std.readonlyArray.join('\n'),
+  TE.right
 );
 
 type NamedTask<E, R> = readonly [string, TE.TaskEither<E, R>];
@@ -200,8 +215,8 @@ type WriteJob = {
 type FixJob = {
   readonly job: 'fix';
   readonly path: readonly string[];
-  readonly defaultContent: string;
-  readonly fixer: (input: string) => E.Either<unknown, string>;
+  readonly emptyContent: string;
+  readonly fixer: (input: string) => TE.TaskEither<unknown, string>;
 };
 
 type ErrorJob = {
@@ -223,15 +238,15 @@ const writeAndChmodTask = ({ path, content }: WriteAndChmodJob) =>
     TE.chain((_) => fs.chmod(path, 0o755))
   );
 
-const fixTask = ({ path, fixer, defaultContent }: FixJob) =>
+const fixTask = ({ path, fixer, emptyContent }: FixJob) =>
   pipe(
     fs.readFile(path),
     TE.foldW(
       (err) =>
         err.code === 'ENOENT'
-          ? writeTask({ job: 'write', path, content: defaultContent })
+          ? pipe(emptyContent, fixer, TE.chain(fs.writeFile(path)))
           : pipe(err, JSON.stringify, TE.left),
-      flow(fixer, T.of, TE.chain(fs.writeFile(path)))
+      flow(fixer, TE.chain(fs.writeFile(path)))
     )
   );
 
@@ -278,19 +293,19 @@ const argvToJobs = (argv: readonly string[]): readonly Job[] =>
         job: 'fix',
         path: ['package.json'],
         fixer: fixPackageJson,
-        defaultContent: fixPackageJsonRun({}),
+        emptyContent: '{}',
       },
       {
         job: 'fix',
         path: ['.github', 'workflows', 'release.yaml'],
         fixer: fixReleaseYamlFile,
-        defaultContent: fixReleaseYamlRun({}),
+        emptyContent: '',
       },
       {
         job: 'fix',
         path: ['.gitignore'],
-        fixer: flow(fixGitignore, E.right),
-        defaultContent: fixGitignore(''),
+        fixer: fixGitignore,
+        emptyContent: '',
       },
     ])
     .otherwise((command): readonly Job[] => [

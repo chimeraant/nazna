@@ -1,5 +1,5 @@
 name: Release
-'on':
+on:
   push:
     branches: main
   pull_request:
@@ -9,32 +9,31 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v2.2.4
-      with:
-        version: 7
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: 16
-        cache: pnpm
-    - name: Install dependencies
-      run: pnpm install
-    - name: Lint
-      run: pnpm lint
-    - name: Build es6
-      run: pnpm build:es6
-    - name: Build cjs
-      run: pnpm build:cjs
-    - name: Build types
-      run: pnpm build:types
-    - name: Build cli
-      run: pnpm build:cli
-    - name: Release
-      env:
-        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-        NPM_TOKEN: "${{ secrets.NPM_TOKEN }}"
-      run: npx semantic-release
-
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2.2.4
+        with:
+          version: 7
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install
+      - name: Lint
+        run: pnpm lint
+      - name: Build es6
+        run: pnpm build:es6
+      - name: Build cjs
+        run: pnpm build:cjs
+      - name: Build types
+        run: pnpm build:types
+      - name: Build cli
+        run: pnpm nazna build cli
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npx semantic-release
