@@ -31,7 +31,7 @@ jobs:
       - name: Build types
         run: pnpm build:types
       - name: Build cli
-        run: pnpm nazna build cli
+        run: pnpm build:cli
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
