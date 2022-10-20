@@ -158,7 +158,6 @@ const fixPackageJson = (content: string) =>
               fix: 'eslint --max-warnings=0 --ext .ts . --fix',
               lint: 'eslint --max-warnings=0 --ext .ts .',
               test: 'vitest',
-              postinstall: 'nazna fix',
               'pre-push:dirty': 'CI=true pnpm install && pnpm build && pnpm lint',
               'pre-push': 'pnpm pre-push:dirty && pnpm publish --dry-run',
             }),
