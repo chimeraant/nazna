@@ -266,9 +266,16 @@ const fixTask = ({ path, fixer, emptyContent }: FixJob) =>
     TE.foldW(
       (err) =>
         err.code === 'ENOENT'
-          ? pipe(emptyContent, fixer, TE.chain(fs.writeFile(path)))
+          ? pipe(
+              emptyContent,
+              fixer,
+              TE.chain((content) => writeTask({ path, content, job: 'write' }))
+            )
           : TE.left(err),
-      flow(fixer, TE.chain(fs.writeFile(path)))
+      flow(
+        fixer,
+        TE.chain((content) => writeTask({ path, content, job: 'write' }))
+      )
     )
   );
 
@@ -321,7 +328,7 @@ const argvToJobs = (argv: readonly string[]): readonly Job[] =>
         job: 'fix',
         path: ['.github', 'workflows', 'release.yaml'],
         fixer: fixReleaseYamlFile,
-        emptyContent: '',
+        emptyContent: 'name: Release',
       },
       {
         job: 'fix',
