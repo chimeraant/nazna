@@ -12,6 +12,7 @@ import {
   taskEither as TE,
 } from 'fp-ts';
 import { flow, pipe } from 'fp-ts/function';
+import * as std from 'fp-ts-std';
 import * as yaml from 'js-yaml';
 import * as pathModule from 'path';
 import { match } from 'ts-pattern';
@@ -166,6 +167,22 @@ const fixPackageJson = flow(
   E.map(fixPackageJsonRun)
 );
 
+const fixGitignore = flow(
+  string.split('\n'),
+  readonlyArray.union(string.Eq)([
+    '.direnv',
+    '.eslintrc.json',
+    '.nazna',
+    '.npmrc',
+    '.releaserc.json',
+    'dist',
+    'node_modules',
+    'tsconfig.json',
+    'tsconfig.dist.json',
+  ]),
+  std.readonlyArray.join('\n')
+);
+
 type NamedTask<E, R> = readonly [string, TE.TaskEither<E, R>];
 
 type WriteAndChmodJob = {
@@ -268,6 +285,12 @@ const argvToJobs = (argv: readonly string[]): readonly Job[] =>
         path: ['.github', 'workflows', 'release.yaml'],
         fixer: fixReleaseYamlFile,
         defaultContent: fixReleaseYamlRun({}),
+      },
+      {
+        job: 'fix',
+        path: ['.gitignore'],
+        fixer: flow(fixGitignore, E.right),
+        defaultContent: fixGitignore(''),
       },
     ])
     .otherwise((command): readonly Job[] => [

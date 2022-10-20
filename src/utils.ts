@@ -6,6 +6,5 @@ export const multiline = flow(
   string.split('\n'),
   readonlyArray.dropLeft(1),
   readonlyArray.dropRight(1),
-  readonlyArray.toArray,
-  std.array.join('\n')
+  std.readonlyArray.join('\n')
 );
