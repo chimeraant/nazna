@@ -221,18 +221,16 @@ const getDirPath = readonlyArray.dropRight(1);
 
 const safeWriteFile = (filePath: readonly string[], content: string) =>
   pipe(
-    T.Do,
-    T.bind(`mkDir`, () => pipe(filePath, getDirPath, fs.mkDir)),
-    T.bind(`writeFile`, () => fs.writeFile(filePath, content)),
-    T.map(apply.sequenceS(E.Apply))
+    TE.Do,
+    TE.bind(`mkDir`, () => pipe(filePath, getDirPath, fs.mkDir)),
+    TE.bind(`writeFile`, () => fs.writeFile(filePath, content))
   );
 
 const writeAndChmodFile = (path: readonly string[], content: string) =>
   pipe(
-    T.Do,
-    T.bind(`safeWriteFile`, () => safeWriteFile(path, content)),
-    T.bind(`chmod`, () => fs.chmod(path, 0o755)),
-    T.map(apply.sequenceS(E.Apply))
+    TE.Do,
+    TE.bind(`safeWriteFile`, () => safeWriteFile(path, content)),
+    TE.bind(`chmod`, () => fs.chmod(path, 0o755))
   );
 
 const fixAndWrite = (
@@ -300,15 +298,14 @@ const argvToTask = (argv: readonly string[]): TE.TaskEither<unknown, unknown> =>
         ),
         'fix .gitignore': fixFile(['.gitignore'], fixGitignore, ''),
         'fix direnv': pipe(
-          T.Do,
-          T.bind('fix .envrc and shell.nix', () =>
+          TE.Do,
+          TE.bind('fix .envrc and shell.nix', () =>
             SParTE({
-              safeWriteFile: safeWriteFile(['.envrc'], constants.envrc),
-              fixFile: fixFile(['shell.nix'], fixShellNix, ''),
+              'fix .envrc': safeWriteFile(['.envrc'], constants.envrc),
+              'fix shell.nix': fixFile(['shell.nix'], fixShellNix, ''),
             })
           ),
-          T.bind('direnv allow', () => spawn('direnv', ['allow'])),
-          T.map(apply.sequenceS(E.Apply))
+          TE.bind('direnv allow', () => spawn('direnv', ['allow']))
         ),
       })
     )
@@ -325,5 +322,8 @@ export const cli = ({
     process.argv,
     readonlyArray.dropLeft(2),
     argvToTask,
-    TE.foldW(flow(console.error, T.fromIO), flow(console.log, T.fromIO))
+    TE.foldW(
+      flow(console.error, T.fromIO),
+      flow((content) => JSON.stringify(content, undefined, 2), console.log, T.fromIO)
+    )
   );
