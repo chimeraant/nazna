@@ -199,6 +199,27 @@ const fixGitignore = flow(
   TE.right
 );
 
+const shellNixPrePackage = `with (import <nixpkgs> { });
+mkShell {
+  buildInputs = [
+    `;
+
+const shellNixPostPackage = `
+  ];
+}
+`;
+
+const fixShellNix = flow(
+  string.replace(shellNixPrePackage, ''),
+  string.replace(shellNixPostPackage, ''),
+  string.split('\n'),
+  readonlyArray.map(string.trim),
+  readonlyArray.union(string.Eq)(['nodePackages.pnpm', 'nodejs-16_x']),
+  std.readonlyArray.join('\n    '),
+  (packages) => shellNixPrePackage + packages + shellNixPostPackage,
+  TE.right
+);
+
 type NamedTask<E, R> = readonly [string, TE.TaskEither<E, R>];
 
 type WriteAndChmodJob = {
@@ -306,6 +327,12 @@ const argvToJobs = (argv: readonly string[]): readonly Job[] =>
         job: 'fix',
         path: ['.gitignore'],
         fixer: fixGitignore,
+        emptyContent: '',
+      },
+      {
+        job: 'fix',
+        path: ['shell.nix'],
+        fixer: fixShellNix,
         emptyContent: '',
       },
     ])
