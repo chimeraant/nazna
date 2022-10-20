@@ -219,14 +219,16 @@ const fixShellNix = flow(
 
 const writeFile = (path: readonly string[]) => (content: string) =>
   pipe(
-    fs.mkDir(readonlyArray.dropRight(1)(path)),
-    TE.chain((_) => fs.writeFile(path)(content))
+    TE.Do,
+    TE.bindW('a', () => fs.mkDir(readonlyArray.dropRight(1)(path))),
+    TE.bindW('b', () => fs.writeFile(path)(content))
   );
 
 const writeAndChmodFile = (path: readonly string[], content: string) =>
   pipe(
-    writeFile(path)(content),
-    TE.chain((_) => fs.chmod(path, 0o755))
+    TE.Do,
+    TE.bindW('a', () => writeFile(path)(content)),
+    TE.bindW('b', () => fs.chmod(path, 0o755))
   );
 
 const fixFile = (
@@ -235,12 +237,21 @@ const fixFile = (
   emptyContent: string
 ) =>
   pipe(
-    fs.readFile(path),
-    TE.foldW(
-      (err) =>
-        err.code === 'ENOENT' ? pipe(emptyContent, fixer, TE.chain(writeFile(path))) : TE.left(err),
-      flow(fixer, TE.chain(writeFile(path)))
-    )
+    T.Do,
+    T.bind('fileReadResult', () => fs.readFile(path)),
+    T.bind('nextTE', ({ fileReadResult }) =>
+      pipe(
+        fileReadResult,
+        E.foldW(
+          (err) =>
+            err.code === 'ENOENT'
+              ? pipe(emptyContent, fixer, TE.chain(writeFile(path)))
+              : TE.left(err),
+          flow(fixer, TE.chain(writeFile(path)))
+        )
+      )
+    ),
+    T.map(apply.sequenceS(E.Apply))
   );
 
 const spawn = (command: string, args: readonly string[]) =>
@@ -249,28 +260,34 @@ const spawn = (command: string, args: readonly string[]) =>
     TE.map(({ code, stderr, stdout }) => ({ code, stdout, stderr }))
   );
 
-const TEPar = apply.sequenceT(TE.ApplyPar);
+const SParTE = apply.sequenceS(TE.ApplyPar);
 
 const argvToTask = (argv: readonly string[]): TE.TaskEither<unknown, unknown> =>
   match(argv)
     .with(['build', 'cli'], (_) => writeAndChmodFile(['dist', 'cli.js'], constants.cliFile))
     .with(['fix'], (_) =>
-      TEPar(
-        writeFile(['.releaserc.json'])(constants.releasercJson),
-        writeFile(['.eslintrc.json'])(constants.eslintrcJson),
-        writeFile(['.npmrc'])(constants.npmrc),
-        writeFile(['tsconfig.json'])(constants.tsconfigJson),
-        writeFile(['tsconfig.dist.json'])(constants.tsconfiDistJson),
-        writeFile(['.nazna', '.gitconfig'])(constants.nazna.gitConfig),
-        writeAndChmodFile(['.nazna', 'gitHooks', 'pre-push'], constants.nazna.gitHooks.prePush),
-        fixFile(['package.json'], fixPackageJson, '{}'),
-        fixFile(['.github', 'workflows', 'release.yaml'], fixReleaseYamlFile, 'name: Release'),
-        fixFile(['.gitignore'], fixGitignore, ''),
-        pipe(
-          TEPar(writeFile(['.envrc'])(constants.envrc), fixFile(['shell.nix'], fixShellNix, '')),
-          TE.chainW(() => spawn('direnv', ['allow']))
-        )
-      )
+      SParTE({
+        a: writeFile(['.releaserc.json'])(constants.releasercJson),
+        b: writeFile(['.eslintrc.json'])(constants.eslintrcJson),
+        c: writeFile(['.npmrc'])(constants.npmrc),
+        d: writeFile(['tsconfig.json'])(constants.tsconfigJson),
+        e: writeFile(['tsconfig.dist.json'])(constants.tsconfiDistJson),
+        f: writeFile(['.nazna', '.gitconfig'])(constants.nazna.gitConfig),
+        g: writeAndChmodFile(['.nazna', 'gitHooks', 'pre-push'], constants.nazna.gitHooks.prePush),
+        h: fixFile(['package.json'], fixPackageJson, '{}'),
+        i: fixFile(['.github', 'workflows', 'release.yaml'], fixReleaseYamlFile, 'name: Release'),
+        j: fixFile(['.gitignore'], fixGitignore, ''),
+        k: pipe(
+          TE.Do,
+          TE.bindW('a', () =>
+            SParTE({
+              k: writeFile(['.envrc'])(constants.envrc),
+              l: fixFile(['shell.nix'], fixShellNix, ''),
+            })
+          ),
+          TE.bindW('b', () => spawn('direnv', ['allow']))
+        ),
+      })
     )
     .otherwise((command) => TE.left(`command not found: ${command}`));
 
