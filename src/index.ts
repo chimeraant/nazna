@@ -1,4 +1,5 @@
 import { summonFor } from '@morphic-ts/batteries/lib/summoner-ESBST';
+import { spawn as sp } from 'child-process-promise';
 import {
   apply,
   console,
@@ -12,7 +13,7 @@ import {
   task as T,
   taskEither as TE,
 } from 'fp-ts';
-import { flow, pipe } from 'fp-ts/function';
+import { flow, identity, pipe } from 'fp-ts/function';
 import * as std from 'fp-ts-std';
 import * as yaml from 'js-yaml';
 import { simpleGit } from 'simple-git';
@@ -120,7 +121,7 @@ const fixDependencies = (oldDependencies: unknown) =>
 
 const objectOrElseEmpyObject = (obj: unknown) => (typeof obj === 'object' ? obj ?? {} : {});
 
-const getRepoUrl = TE.tryCatch(() => simpleGit().listRemote(['--get-url', 'origin']), String);
+const getRepoUrl = TE.tryCatch(() => simpleGit().listRemote(['--get-url', 'origin']), identity);
 
 const fixPackageJson = (content: string) =>
   pipe(
@@ -245,13 +246,20 @@ const fixFile = (
     )
   );
 
+const spawn = (command: string, args: readonly string[]) =>
+  pipe(
+    TE.tryCatch(() => sp(command, args), identity),
+    TE.map(({ code, stderr, stdout }) => ({ code, stdout, stderr }))
+  );
+
+const TEPar = apply.sequenceT(TE.ApplyPar);
+
 const argvToTask = (argv: readonly string[]): TE.TaskEither<unknown, unknown> =>
   match(argv)
     .with(['build', 'cli'], (_) => writeAndChmodFile(['dist', 'cli.js'], constants.cliFile))
     .with(['fix'], (_) =>
-      apply.sequenceT(TE.ApplyPar)(
+      TEPar(
         writeFile(['.releaserc.json'])(constants.releasercJson),
-        writeFile(['.envrc'])(constants.envrc),
         writeFile(['.eslintrc.json'])(constants.eslintrcJson),
         writeFile(['.npmrc'])(constants.npmrc),
         writeFile(['tsconfig.json'])(constants.tsconfigJson),
@@ -261,7 +269,10 @@ const argvToTask = (argv: readonly string[]): TE.TaskEither<unknown, unknown> =>
         fixFile(['package.json'], fixPackageJson, '{}'),
         fixFile(['.github', 'workflows', 'release.yaml'], fixReleaseYamlFile, 'name: Release'),
         fixFile(['.gitignore'], fixGitignore, ''),
-        fixFile(['shell.nix'], fixShellNix, '')
+        pipe(
+          TEPar(writeFile(['.envrc'])(constants.envrc), fixFile(['shell.nix'], fixShellNix, '')),
+          TE.chainW(() => spawn('direnv', ['allow']))
+        )
       )
     )
     .otherwise((command) => TE.left(`command not found: ${command}`));
