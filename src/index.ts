@@ -195,6 +195,7 @@ const fixGitignore = flow(
     'tsconfig.dist.json',
   ]),
   std.readonlyArray.join('\n'),
+  (content) => `${content}\n`,
   TE.right
 );
 
