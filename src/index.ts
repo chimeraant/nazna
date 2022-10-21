@@ -293,7 +293,7 @@ const argvToTask = (argv: readonly string[]): TE.TaskEither<unknown, unknown> =>
   match(argv)
     .with(['init'], (_) =>
       pipe(
-        spawn('pnpm', ['add', 'nazna']),
+        spawn('pnpm', ['add', '-D', 'nazna']),
         TE.chain(() => fix),
         TE.chain(() => spawn('pnpm', ['install']))
       )
