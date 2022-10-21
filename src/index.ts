@@ -221,16 +221,14 @@ const getDirPath = readonlyArray.dropRight(1);
 
 const safeWriteFile = (filePath: readonly string[], content: string) =>
   pipe(
-    TE.Do,
-    TE.bind(`mkDir`, () => pipe(filePath, getDirPath, fs.mkDir)),
-    TE.bind(`writeFile`, () => fs.writeFile(filePath, content))
+    pipe(filePath, getDirPath, fs.mkDir),
+    TE.chain(() => fs.writeFile(filePath, content))
   );
 
 const writeAndChmodFile = (path: readonly string[], content: string) =>
   pipe(
-    TE.Do,
-    TE.bind(`safeWriteFile`, () => safeWriteFile(path, content)),
-    TE.bind(`chmod`, () => fs.chmod(path, 0o755))
+    safeWriteFile(path, content),
+    TE.chain(() => fs.chmod(path, 0o755))
   );
 
 const fixAndWrite = (
@@ -239,9 +237,8 @@ const fixAndWrite = (
   content: string
 ) =>
   pipe(
-    TE.Do,
-    TE.bind('fixerResult', () => fixer(content)),
-    TE.bind(`safeWriteFile`, ({ fixerResult }) => safeWriteFile(path, fixerResult))
+    fixer(content),
+    TE.chain((fixerResult) => safeWriteFile(path, fixerResult))
   );
 
 const fixFile = (
@@ -250,21 +247,16 @@ const fixFile = (
   emptyContent: string
 ) =>
   pipe(
-    T.Do,
-    T.bind('fileReadResult', () => fs.readFile(path)),
-    T.bind('nextTE', ({ fileReadResult }) =>
+    fs.readFile(path),
+    T.chain((fileReadResult) =>
       pipe(
         fileReadResult,
         E.foldW(
-          (err) =>
-            match(err)
-              .with({ code: 'ENOENT' }, () => fixAndWrite(path, fixer, emptyContent))
-              .otherwise(TE.left),
+          (err) => (err.code === 'ENOENT' ? fixAndWrite(path, fixer, emptyContent) : TE.left(err)),
           (fileContent) => fixAndWrite(path, fixer, fileContent)
         )
       )
-    ),
-    T.map(apply.sequenceS(E.Apply))
+    )
   );
 
 const spawn = (command: string, args: readonly string[]) =>
@@ -301,10 +293,9 @@ const argvToTask = (argv: readonly string[]): TE.TaskEither<unknown, unknown> =>
   match(argv)
     .with(['init'], (_) =>
       pipe(
-        TE.Do,
-        TE.bind(`pnpm add nazna`, () => spawn('pnpm', ['add', 'nazna'])),
-        TE.bind(`fix`, () => fix),
-        TE.bind(`pnpm install`, () => spawn('pnpm', ['install']))
+        spawn('pnpm', ['add', 'nazna']),
+        TE.chain(() => fix),
+        TE.chain(() => spawn('pnpm', ['install']))
       )
     )
     .with(['build', 'cli'], (_) => writeAndChmodFile(['dist', 'cli.js'], constants.cliFile))
@@ -323,7 +314,7 @@ export const cli = ({
     readonlyArray.dropLeft(2),
     argvToTask,
     TE.foldW(
-      flow(console.error, T.fromIO),
+      flow((content) => JSON.stringify(content, undefined, 2), console.error, T.fromIO),
       flow((content) => JSON.stringify(content, undefined, 2), console.log, T.fromIO)
     )
   );
