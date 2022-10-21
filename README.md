@@ -5,5 +5,10 @@ Chimera Ant's library utility
 
 In your repo directory:
 ```sh
-nix-shell -p nodePackages.pnpm --run "pnpm add nazna && pnpm nazna fix && pnpm install"
+nix-shell -p nodePackages.pnpm --run "pnpm dlx nazna init"
+```
+
+Then allow your direnv:
+```sh
+direnv allow
 ```

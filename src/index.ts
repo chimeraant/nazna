@@ -275,40 +275,40 @@ const spawn = (command: string, args: readonly string[]) =>
 
 const SParTE = apply.sequenceS(TE.ApplyPar);
 
+const fix = SParTE({
+  'fix .releaserc.json': safeWriteFile(['.releaserc.json'], constants.releasercJson),
+  'fix .eslintrc.json': safeWriteFile(['.eslintrc.json'], constants.eslintrcJson),
+  'fix .npmrc': safeWriteFile(['.npmrc'], constants.npmrc),
+  'fix tsconfig.json': safeWriteFile(['tsconfig.json'], constants.tsconfigJson),
+  'fix tsconfig.dist.json': safeWriteFile(['tsconfig.dist.json'], constants.tsconfiDistJson),
+  'fix .nazna/.gitconfig': safeWriteFile(['.nazna', '.gitconfig'], constants.nazna.gitConfig),
+  'fix .nazna/gitHooks/pre-push': writeAndChmodFile(
+    ['.nazna', 'gitHooks', 'pre-push'],
+    constants.nazna.gitHooks.prePush
+  ),
+  'fix package.json': fixFile(['package.json'], fixPackageJson, '{}'),
+  'fix .github/workflows/release.yaml': fixFile(
+    ['.github', 'workflows', 'release.yaml'],
+    fixReleaseYamlFile,
+    'name: Release'
+  ),
+  'fix .gitignore': fixFile(['.gitignore'], fixGitignore, ''),
+  'fix .envrc': safeWriteFile(['.envrc'], constants.envrc),
+  'fix shell.nix': fixFile(['shell.nix'], fixShellNix, ''),
+});
+
 const argvToTask = (argv: readonly string[]): TE.TaskEither<unknown, unknown> =>
   match(argv)
-    .with(['build', 'cli'], (_) => writeAndChmodFile(['dist', 'cli.js'], constants.cliFile))
-    .with(['fix'], (_) =>
-      SParTE({
-        'fix .releaserc.json': safeWriteFile(['.releaserc.json'], constants.releasercJson),
-        'fix .eslintrc.json': safeWriteFile(['.eslintrc.json'], constants.eslintrcJson),
-        'fix .npmrc': safeWriteFile(['.npmrc'], constants.npmrc),
-        'fix tsconfig.json': safeWriteFile(['tsconfig.json'], constants.tsconfigJson),
-        'fix tsconfig.dist.json': safeWriteFile(['tsconfig.dist.json'], constants.tsconfiDistJson),
-        'fix .nazna/.gitconfig': safeWriteFile(['.nazna', '.gitconfig'], constants.nazna.gitConfig),
-        'fix .nazna/gitHooks/pre-push': writeAndChmodFile(
-          ['.nazna', 'gitHooks', 'pre-push'],
-          constants.nazna.gitHooks.prePush
-        ),
-        'fix package.json': fixFile(['package.json'], fixPackageJson, '{}'),
-        'fix .github/workflows/release.yaml': fixFile(
-          ['.github', 'workflows', 'release.yaml'],
-          fixReleaseYamlFile,
-          'name: Release'
-        ),
-        'fix .gitignore': fixFile(['.gitignore'], fixGitignore, ''),
-        'fix direnv': pipe(
-          TE.Do,
-          TE.bind('fix .envrc and shell.nix', () =>
-            SParTE({
-              'fix .envrc': safeWriteFile(['.envrc'], constants.envrc),
-              'fix shell.nix': fixFile(['shell.nix'], fixShellNix, ''),
-            })
-          ),
-          TE.bind('direnv allow', () => spawn('direnv', ['allow']))
-        ),
-      })
+    .with(['init'], (_) =>
+      pipe(
+        TE.Do,
+        TE.bind(`pnpm add nazna`, () => spawn('pnpm', ['add', 'nazna'])),
+        TE.bind(`fix`, () => fix),
+        TE.bind(`pnpm install`, () => spawn('pnpm', ['install']))
+      )
     )
+    .with(['build', 'cli'], (_) => writeAndChmodFile(['dist', 'cli.js'], constants.cliFile))
+    .with(['fix'], (_) => fix)
     .otherwise((command) => TE.left(`command not found: ${command}`));
 
 type Process = typeof process;
