@@ -1,10 +1,7 @@
-import { summonFor } from '@morphic-ts/batteries/lib/summoner-ESBST';
 import { spawn as sp } from 'child-process-promise';
 import {
-  apply,
   console,
   either as E,
-  json,
   ord,
   readonlyArray,
   readonlyNonEmptyArray,
@@ -21,6 +18,9 @@ import { match } from 'ts-pattern';
 
 import * as constants from './constants';
 import { fs } from './fs';
+import { PackageJson, ReleaseYamlFile } from './type';
+import { multiline } from './utils';
+import * as validation from './validation';
 
 const requiredSteps = [
   {
@@ -80,10 +80,6 @@ const requiredSteps = [
   },
 ];
 
-const { summon } = summonFor({});
-
-export const ReleaseYamlFile = summon((F) => F.strMap(F.unknown()));
-
 const fixReleaseYamlFile = flow(
   yaml.load,
   ReleaseYamlFile.type.decode,
@@ -125,61 +121,61 @@ const fixDependencies = (oldDependencies: unknown) =>
 
 const objectOrElseEmpyObject = (obj: unknown) => (typeof obj === 'object' ? obj ?? {} : {});
 
-const getRepoUrl = TE.tryCatch(() => simpleGit().listRemote(['--get-url', 'origin']), identity);
+const getRepoUrll = TE.tryCatch(() => simpleGit().listRemote(['--get-url', 'origin']), identity);
 
-const fixPackageJson = (content: string) =>
+const jsonPrettyStringify = (obj: Record<string, unknown>) =>
+  E.tryCatch(() => JSON.stringify(obj, undefined, 2), identity);
+
+const fixPackageJson = (packageJson: PackageJson) =>
   pipe(
-    TE.Do,
-    TE.bindW('packageJson', () =>
-      pipe(content, json.parse, E.chainW(ReleaseYamlFile.type.decode), TE.fromEither)
-    ),
-    TE.bindW('repoUrl', () =>
-      pipe(getRepoUrl, TE.map(flow(string.split('\n'), readonlyNonEmptyArray.head)))
-    ),
-    TE.map(({ packageJson, repoUrl }) =>
-      pipe({
-        ...packageJson,
-        ...fixDependencies(packageJson['dependencies']),
-        ...{
-          devDependencies: sortedRecord({
-            ...objectOrElseEmpyObject(packageJson['devDependencies']),
-            ...{
-              '@swc/cli': '^0.1.57',
-              '@swc/core': '^1.3.8',
-              eslint: '^8.25.0',
-              pnpm: '^7.13.4',
-              typescript: '^4.8.4',
-              vitest: '^0.24.1',
+    getRepoUrll,
+    TE.map(
+      flow(string.split('\n'), readonlyNonEmptyArray.head, (firstRepoUrl) =>
+        pipe({
+          ...packageJson,
+          ...fixDependencies(packageJson.dependencies),
+          ...{
+            devDependencies: sortedRecord({
+              ...objectOrElseEmpyObject(packageJson.devDependencies),
+              ...{
+                '@swc/cli': '^0.1.57',
+                '@swc/core': '^1.3.8',
+                eslint: '^8.25.0',
+                pnpm: '^7.13.4',
+                typescript: '^4.8.4',
+                vitest: '^0.24.1',
+              },
+            }),
+            scripts: sortedRecord({
+              ...objectOrElseEmpyObject(packageJson.scripts),
+              'build:es6': 'swc src --out-dir dist/es6 --source-maps',
+              'build:cjs': 'swc src --out-dir dist/cjs --source-maps --config module.type=commonjs',
+              'build:types': 'tsc --project tsconfig.dist.json',
+              build: 'pnpm build:types && pnpm build:es6 && pnpm build:cjs && nazna build cli',
+              fix: 'eslint --max-warnings=0 --ext .ts . --fix',
+              lint: 'eslint --max-warnings=0 --ext .ts .',
+              test: 'vitest',
+              'pre-push:dirty': 'CI=true pnpm install && pnpm build && pnpm lint',
+              'pre-push': 'pnpm pre-push:dirty && pnpm publish --dry-run',
+            }),
+            repository: firstRepoUrl,
+            version: '0.0.0-semantic-release',
+            license: 'MIT',
+            types: './dist/types/index.d.ts',
+            main: './dist/cjs/index.js',
+            module: './dist/es6/index.js',
+            exports: {
+              require: './dist/cjs/index.js',
+              import: './dist/es6/index.js',
             },
-          }),
-          scripts: sortedRecord({
-            ...objectOrElseEmpyObject(packageJson['scripts']),
-            'build:es6': 'swc src --out-dir dist/es6 --source-maps',
-            'build:cjs': 'swc src --out-dir dist/cjs --source-maps --config module.type=commonjs',
-            'build:types': 'tsc --project tsconfig.dist.json',
-            build: 'pnpm build:types && pnpm build:es6 && pnpm build:cjs && nazna build cli',
-            fix: 'eslint --max-warnings=0 --ext .ts . --fix',
-            lint: 'eslint --max-warnings=0 --ext .ts .',
-            test: 'vitest',
-            'pre-push:dirty': 'CI=true pnpm install && pnpm build && pnpm lint',
-            'pre-push': 'pnpm pre-push:dirty && pnpm publish --dry-run',
-          }),
-          repository: repoUrl,
-          version: '0.0.0-semantic-release',
-          license: 'MIT',
-          types: './dist/types/index.d.ts',
-          main: './dist/cjs/index.js',
-          module: './dist/es6/index.js',
-          exports: {
-            require: './dist/cjs/index.js',
-            import: './dist/es6/index.js',
+            files: ['dist'],
+            bin: './dist/cli.js',
           },
-          files: ['dist'],
-          bin: './dist/cli.js',
-        },
-      })
+        })
+      )
     ),
-    TE.chainEitherK((obj) => E.tryCatch(() => JSON.stringify(obj, undefined, 2), identity))
+    TE.chainEitherK(jsonPrettyStringify),
+    validation.liftTE
   );
 
 const fixGitignore = flow(
@@ -200,44 +196,42 @@ const fixGitignore = flow(
   TE.right
 );
 
-const shellNixPrePackage = `with (import <nixpkgs> { });
-mkShell {
-  buildInputs = [
-    `;
-
-const shellNixPostPackage = `
-  ];
+const flakeNixTemplate = (packages: string) =>
+  multiline(`
+{
+  outputs = { self, nixpkgs }: with nixpkgs.legacyPackages.x86_64-linux; {
+    devShell.x86_64-linux = mkShell {
+      buildInputs = [
+        nodejs-16_x
+        nodePackages.pnpm${packages}
+      ];
+    };
+  };
 }
-`;
+`);
 
-const fixShellNix = flow(
-  string.replace(shellNixPrePackage, ''),
-  string.replace(shellNixPostPackage, ''),
-  string.split('\n'),
-  readonlyArray.map(string.trim),
-  readonlyArray.union(string.Eq)(['nodePackages.pnpm', 'nodejs-16_x']),
-  std.readonlyArray.join('\n    '),
-  (packages) => shellNixPrePackage + packages + shellNixPostPackage,
-  TE.right
-);
+const flakeNix = (packageJson: PackageJson) =>
+  pipe(packageJson.nazna?.flake ?? [], std.readonlyArray.join('\n'), flakeNixTemplate);
 
 const getDirPath = readonlyArray.dropRight(1);
 
 const safeWriteFile = (filePath: readonly string[], content: string) =>
   pipe(
     pipe(filePath, getDirPath, fs.mkDir),
-    TE.chain(() => fs.writeFile(filePath, content))
+    TE.chain(() => fs.writeFile(filePath, content)),
+    validation.liftTE
   );
 
 const writeAndChmodFile = (path: readonly string[], content: string) =>
   pipe(
     safeWriteFile(path, content),
-    TE.chain(() => fs.chmod(path, 0o755))
+    TE.chain(() => fs.chmod(path, 0o755)),
+    validation.liftTE
   );
 
 const fixAndWrite = (
   path: readonly string[],
-  fixer: (input: string) => TE.TaskEither<unknown, string>,
+  fixer: (input: string) => TE.TaskEither<readonly unknown[], string>,
   content: string
 ) =>
   pipe(
@@ -247,7 +241,7 @@ const fixAndWrite = (
 
 const fixFile = (
   path: readonly string[],
-  fixer: (input: string) => TE.TaskEither<unknown, string>,
+  fixer: (input: string) => TE.TaskEither<readonly unknown[], string>,
   emptyContent: string
 ) =>
   pipe(
@@ -256,7 +250,10 @@ const fixFile = (
       pipe(
         fileReadResult,
         E.foldW(
-          (err) => (err.code === 'ENOENT' ? fixAndWrite(path, fixer, emptyContent) : TE.left(err)),
+          (err) =>
+            err.code === 'ENOENT'
+              ? fixAndWrite(path, fixer, emptyContent)
+              : validation.liftTE(TE.left(err)),
           (fileContent) => fixAndWrite(path, fixer, fileContent)
         )
       )
@@ -266,42 +263,46 @@ const fixFile = (
 const spawn = (command: string, args: readonly string[]) =>
   pipe(
     TE.tryCatch(() => sp(command, args), identity),
-    TE.map(({ code, stderr, stdout }) => ({ code, stdout, stderr }))
+    TE.map(({ code, stderr, stdout }) => ({ code, stdout, stderr })),
+    validation.liftTE
   );
 
-const SParTE = apply.sequenceS(TE.ApplyPar);
+const fix = validation.apply(
+  safeWriteFile(['.releaserc.json'], constants.releasercJson),
+  safeWriteFile(['.eslintrc.json'], constants.eslintrcJson),
+  safeWriteFile(['.npmrc'], constants.npmrc),
+  safeWriteFile(['tsconfig.json'], constants.tsconfigJson),
+  safeWriteFile(['tsconfig.dist.json'], constants.tsconfiDistJson),
+  safeWriteFile(['.nazna', '.gitconfig'], constants.nazna.gitConfig),
+  writeAndChmodFile(['.nazna', 'gitHooks', 'pre-push'], constants.nazna.gitHooks.prePush),
+  fixFile(['.github', 'workflows', 'release.yaml'], fixReleaseYamlFile, 'name: Release'),
+  fixFile(['.gitignore'], fixGitignore, ''),
+  safeWriteFile(['.envrc'], constants.envrc),
+  pipe(
+    fs.readFile(['package.json']),
+    PackageJson.type.decode,
+    TE.fromEither,
+    TE.chain((packageJson) =>
+      validation.apply(
+        pipe(
+          fixPackageJson(packageJson),
+          TE.chain((content) => safeWriteFile(['package.json'], content))
+        ),
+        safeWriteFile(['flake.nix'], flakeNix(packageJson))
+      )
+    )
+  )
+);
 
-const fix = SParTE({
-  'fix .releaserc.json': safeWriteFile(['.releaserc.json'], constants.releasercJson),
-  'fix .eslintrc.json': safeWriteFile(['.eslintrc.json'], constants.eslintrcJson),
-  'fix .npmrc': safeWriteFile(['.npmrc'], constants.npmrc),
-  'fix tsconfig.json': safeWriteFile(['tsconfig.json'], constants.tsconfigJson),
-  'fix tsconfig.dist.json': safeWriteFile(['tsconfig.dist.json'], constants.tsconfiDistJson),
-  'fix .nazna/.gitconfig': safeWriteFile(['.nazna', '.gitconfig'], constants.nazna.gitConfig),
-  'fix .nazna/gitHooks/pre-push': writeAndChmodFile(
-    ['.nazna', 'gitHooks', 'pre-push'],
-    constants.nazna.gitHooks.prePush
-  ),
-  'fix package.json': fixFile(['package.json'], fixPackageJson, '{}'),
-  'fix .github/workflows/release.yaml': fixFile(
-    ['.github', 'workflows', 'release.yaml'],
-    fixReleaseYamlFile,
-    'name: Release'
-  ),
-  'fix .gitignore': fixFile(['.gitignore'], fixGitignore, ''),
-  'fix .envrc': safeWriteFile(['.envrc'], constants.envrc),
-  'fix shell.nix': fixFile(['shell.nix'], fixShellNix, ''),
-});
+const init = pipe(
+  spawn('pnpm', ['add', '-D', 'nazna']),
+  TE.chain(() => fix),
+  TE.chain(() => spawn('pnpm', ['install']))
+);
 
 const argvToTask = (argv: readonly string[]): TE.TaskEither<unknown, unknown> =>
   match(argv)
-    .with(['init'], (_) =>
-      pipe(
-        spawn('pnpm', ['add', '-D', 'nazna']),
-        TE.chain(() => fix),
-        TE.chain(() => spawn('pnpm', ['install']))
-      )
-    )
+    .with(['init'], (_) => init)
     .with(['build', 'cli'], (_) => writeAndChmodFile(['dist', 'cli.js'], constants.cliFile))
     .with(['fix'], (_) => fix)
     .otherwise((command) => TE.left(`command not found: ${command}`));

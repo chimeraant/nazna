@@ -16,16 +16,7 @@ const ReadFileError = summon((F) =>
   )
 );
 
-type ReadFileErr =
-  | {
-      readonly code: 'unknown';
-      readonly value: unknown;
-    }
-  | {
-      readonly code: 'ENOENT';
-    };
-
-const mapReadFileErr = (err: unknown): ReadFileErr =>
+const mapReadFileErr = (err: unknown) =>
   ReadFileError.type.is(err) ? err : { code: 'unknown', value: err };
 
 export const fs = {

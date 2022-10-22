@@ -20,7 +20,7 @@ export const releasercJson = multiline(`
 `);
 
 export const envrc = multiline(`
-use_nix
+use flake
 layout node
 git config --local include.path ../.nazna/.gitconfig
 `);
@@ -120,10 +120,10 @@ auto-install-peers=true
 
 export const tsconfiDistJson = multiline(`
 {
-"extends": "./tsconfig",
-"include": [
-  "src"
-]
+  "extends": "./tsconfig",
+  "include": [
+    "src"
+  ]
 }
 `);
 

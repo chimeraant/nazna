@@ -10,5 +10,5 @@ nix-shell -p nodePackages.pnpm --run "pnpm dlx nazna init"
 
 Then allow your direnv:
 ```sh
-direnv allow
+git add . && direnv allow
 ```

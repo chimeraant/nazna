@@ -1,6 +1,8 @@
 {
   "dependencies": {
     "@morphic-ts/batteries": "^3.0.0",
+    "@morphic-ts/model-algebras": "^3.0.0",
+    "@morphic-ts/summoners": "^3.0.0",
     "@types/child-process-promise": "^2.2.2",
     "@types/js-yaml": "^4.0.5",
     "@typescript-eslint/eslint-plugin": "^5.40.1",
@@ -40,7 +42,7 @@
     "build:cli": "printf '#!/usr/bin/env node\nrequire(\"./cjs/index\").cli({process})();' > ./dist/cli.js && chmod +x ./dist/cli.js",
     "build:es6": "swc src --out-dir dist/es6 --source-maps",
     "build:types": "tsc --project tsconfig.dist.json",
-    "test:fix": "git checkout -- package.json .github/workflows/release.yaml && pnpm build && ./dist/cli.js fix && git checkout -- package.json .github/workflows/release.yaml",
+    "test:fix": "git checkout -- package.json .github/workflows/release.yaml && pnpm build && ./dist/cli.js fix && git checkout -- package.json .github/workflows/release.yaml .gitignore",
     "fix": "eslint --max-warnings=0 --ext .ts . --fix",
     "lint": "eslint --max-warnings=0 --ext .ts .",
     "pre-push": "pnpm pre-push:dirty && pnpm publish --dry-run",

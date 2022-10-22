@@ -2,6 +2,8 @@ lockfileVersion: 5.4
 
 specifiers:
   '@morphic-ts/batteries': ^3.0.0
+  '@morphic-ts/model-algebras': ^3.0.0
+  '@morphic-ts/summoners': ^3.0.0
   '@swc/cli': ^0.1.57
   '@swc/core': ^1.3.8
   '@types/child-process-promise': ^2.2.2
@@ -35,6 +37,8 @@ specifiers:
 
 dependencies:
   '@morphic-ts/batteries': 3.0.0_ijxaxaqzvtydjr7nx22rxz23xi
+  '@morphic-ts/model-algebras': 3.0.0_4d7wvhfwbxj4u6itqsiiv2wloq
+  '@morphic-ts/summoners': 3.0.0_4d7wvhfwbxj4u6itqsiiv2wloq
   '@types/child-process-promise': 2.2.2
   '@types/js-yaml': 4.0.5
   '@typescript-eslint/eslint-plugin': 5.40.1_ukgdydjtebaxmxfqp5v5ulh64y
