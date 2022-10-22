@@ -47,6 +47,10 @@ const requiredSteps = [
     run: 'pnpm install',
   },
   {
+    name: 'Nazna fix',
+    run: 'pnpm nazna fix',
+  },
+  {
     name: 'Lint',
     run: 'pnpm lint',
   },
