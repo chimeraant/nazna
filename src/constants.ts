@@ -110,7 +110,18 @@ export const eslintrcJson = multiline(`
         "argsIgnorePattern": "^_"
       }
     ]
-  }
+  },
+  "overrides": [
+    {
+      "files": [
+        "test/**.test.ts"
+      ],
+      "rules": {
+        "functional/no-return-void": "off",
+        "functional/no-expression-statement": "off"
+      }
+    }
+  ]
 }
 `);
 
