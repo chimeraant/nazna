@@ -175,7 +175,8 @@ export const tsconfigJson = multiline(`
   },
   "include": [
     "src",
-    "test"
+    "test",
+    "vitest.config.ts"
   ]
 }
 `);

@@ -145,6 +145,7 @@ const fixPackageJson = (packageJson: PackageJson) =>
               },
             }),
             scripts: sortedRecord({
+              test: 'vitest',
               ...packageJson.scripts,
               'build:es6': 'swc src --out-dir dist/es6 --source-maps',
               'build:cjs': 'swc src --out-dir dist/cjs --source-maps --config module.type=commonjs',
@@ -152,7 +153,6 @@ const fixPackageJson = (packageJson: PackageJson) =>
               build: 'pnpm build:types && pnpm build:es6 && pnpm build:cjs && nazna build cli',
               fix: 'eslint --max-warnings=0 --ext .ts . --fix',
               lint: 'eslint --max-warnings=0 --ext .ts .',
-              test: 'vitest',
               'pre-push:dirty': 'CI=true pnpm install && pnpm build && pnpm lint',
               'pre-push': 'pnpm pre-push:dirty && pnpm publish --dry-run',
             }),
