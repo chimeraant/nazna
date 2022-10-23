@@ -211,7 +211,13 @@ const flakeNixTemplate = (packages: string) =>
 const flakeNix = (packageJson: PackageJson) =>
   pipe(
     O.fromNullable(packageJson.nazna?.flake),
-    O.map(flow(std.readonlyArray.join('\n'), std.string.prepend('\n'), flakeNixTemplate)),
+    O.map(
+      flow(
+        readonlyArray.map(std.string.prepend('\n        ')),
+        std.readonlyArray.join(''),
+        flakeNixTemplate
+      )
+    ),
     O.getOrElse(() => '')
   );
 
