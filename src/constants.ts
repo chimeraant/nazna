@@ -120,7 +120,8 @@ export const eslintrcJson = multiline(`
   "overrides": [
     {
       "files": [
-        "test/**.test.ts"
+        "test/**.test.ts",
+        "src/test/**.ts"
       ],
       "rules": {
         "functional/no-return-void": "off",
