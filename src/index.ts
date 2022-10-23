@@ -2,6 +2,7 @@ import { spawn as sp } from 'child-process-promise';
 import {
   console,
   either as E,
+  option as O,
   ord,
   readonlyArray,
   readonlyNonEmptyArray,
@@ -208,7 +209,11 @@ const flakeNixTemplate = (packages: string) =>
 `);
 
 const flakeNix = (packageJson: PackageJson) =>
-  pipe(packageJson.nazna?.flake ?? [], std.readonlyArray.join('\n'), flakeNixTemplate);
+  pipe(
+    O.fromNullable(packageJson.nazna?.flake),
+    O.map(flow(std.readonlyArray.join('\n'), std.string.prepend('\n'), flakeNixTemplate)),
+    O.getOrElse(() => '')
+  );
 
 const getDirPath = readonlyArray.dropRight(1);
 
