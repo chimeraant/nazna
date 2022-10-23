@@ -153,7 +153,7 @@ const fixPackageJson = (packageJson: PackageJson) =>
               build: 'pnpm build:types && pnpm build:es6 && pnpm build:cjs && nazna build cli',
               fix: 'eslint --max-warnings=0 --ext .ts . --fix',
               lint: 'eslint --max-warnings=0 --ext .ts .',
-              'pre-push:dirty': 'CI=true pnpm install && pnpm build && pnpm lint',
+              'pre-push:dirty': 'CI=true pnpm install && pnpm build && pnpm lint && pnpm test',
               'pre-push': 'pnpm pre-push:dirty && pnpm publish --dry-run',
             }),
             repository: firstRepoUrl,
