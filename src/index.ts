@@ -116,14 +116,9 @@ const sortedRecord = flow(
   readonlyRecord.fromEntries
 );
 
-const fixDependencies = (oldDependencies: unknown) =>
-  typeof oldDependencies === 'object' ? { dependencies: sortedRecord(oldDependencies ?? {}) } : {};
-
-const objectOrElseEmpyObject = (obj: unknown) => (typeof obj === 'object' ? obj ?? {} : {});
-
 const getRepoUrll = TE.tryCatch(() => simpleGit().listRemote(['--get-url', 'origin']), identity);
 
-const jsonPrettyStringify = (obj: Record<string, unknown>) =>
+const jsonPrettyStringify = (obj: unknown) =>
   E.tryCatch(() => JSON.stringify(obj, undefined, 2), identity);
 
 const fixPackageJson = (packageJson: PackageJson) =>
@@ -133,10 +128,12 @@ const fixPackageJson = (packageJson: PackageJson) =>
       flow(string.split('\n'), readonlyNonEmptyArray.head, (firstRepoUrl) =>
         pipe({
           ...packageJson,
-          ...fixDependencies(packageJson.dependencies),
+          ...(packageJson.dependencies
+            ? { dependencies: sortedRecord(packageJson.dependencies) }
+            : {}),
           ...{
             devDependencies: sortedRecord({
-              ...objectOrElseEmpyObject(packageJson.devDependencies),
+              ...packageJson.devDependencies,
               ...{
                 '@swc/cli': '^0.1.57',
                 '@swc/core': '^1.3.8',
@@ -147,7 +144,7 @@ const fixPackageJson = (packageJson: PackageJson) =>
               },
             }),
             scripts: sortedRecord({
-              ...objectOrElseEmpyObject(packageJson.scripts),
+              ...packageJson.scripts,
               'build:es6': 'swc src --out-dir dist/es6 --source-maps',
               'build:cjs': 'swc src --out-dir dist/cjs --source-maps --config module.type=commonjs',
               'build:types': 'tsc --project tsconfig.dist.json',
@@ -280,8 +277,9 @@ const fix = validation.apply(
   safeWriteFile(['.envrc'], constants.envrc),
   pipe(
     fs.readFile(['package.json']),
-    PackageJson.type.decode,
-    TE.fromEither,
+    validation.liftTE,
+    TE.map((text) => JSON.parse(text)),
+    TE.chainEitherKW((k) => PackageJson.type.decode(k)),
     TE.chain((packageJson) =>
       validation.apply(
         pipe(
@@ -312,14 +310,17 @@ type Process = typeof process;
 export const cli = ({
   process,
 }: {
-  readonly process: { readonly argv: Process['argv'] };
+  readonly process: Pick<Process, 'argv' | 'exit'>;
 }): T.Task<void> =>
   pipe(
     process.argv,
     readonlyArray.dropLeft(2),
     argvToTask,
-    TE.foldW(
-      flow((content) => JSON.stringify(content, undefined, 2), console.error, T.fromIO),
-      flow((content) => JSON.stringify(content, undefined, 2), console.log, T.fromIO)
+    T.chain((result) => pipe(TE.fromEither(jsonPrettyStringify(result)), TE.chainIOK(console.log))),
+    T.chainIOK(
+      E.fold(
+        () => () => process.exit(1),
+        () => () => process.exit(0)
+      )
     )
   );
