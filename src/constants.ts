@@ -63,6 +63,12 @@ export const eslintrcJson = multiline(`
     "@typescript-eslint/unbound-method": "off",
     "functional/functional-parameters": "off",
     "functional/no-mixed-type": "off",
+    "fp-ts/no-module-imports": [
+      "error",
+      {
+        "allowTypes": true
+      }
+    ],
     "prettier/prettier": [
       "error",
       {
