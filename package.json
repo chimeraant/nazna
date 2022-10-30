@@ -42,12 +42,12 @@
     "build:cli": "printf '#!/usr/bin/env node\nrequire(\"./cjs/index\").cli({process})();' > ./dist/cli.js && chmod +x ./dist/cli.js",
     "build:es6": "swc src --out-dir dist/es6 --source-maps",
     "build:types": "tsc --project tsconfig.dist.json",
-    "test:fix": "git checkout -- package.json .github/workflows/release.yaml && pnpm build && ./dist/cli.js fix && git checkout -- package.json .github/workflows/release.yaml .gitignore",
     "fix": "eslint --max-warnings=0 --ext .ts . --fix",
     "lint": "eslint --max-warnings=0 --ext .ts .",
     "pre-push": "pnpm pre-push:dirty && pnpm publish --dry-run",
-    "pre-push:dirty": "CI=true pnpm install && pnpm build && pnpm lint",
-    "test": "vitest"
+    "pre-push:dirty": "CI=true pnpm install && pnpm build && pnpm lint && pnpm test",
+    "test": "echo donothing",
+    "test:fix": "git checkout -- package.json .github/workflows/release.yaml && pnpm build && ./dist/cli.js fix && git checkout -- package.json .github/workflows/release.yaml .gitignore"
   },
   "name": "nazna",
   "version": "0.0.0-semantic-release",

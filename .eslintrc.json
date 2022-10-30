@@ -35,6 +35,12 @@
     "@typescript-eslint/unbound-method": "off",
     "functional/functional-parameters": "off",
     "functional/no-mixed-type": "off",
+    "fp-ts/no-module-imports": [
+      "error",
+      {
+        "allowTypes": true
+      }
+    ],
     "prettier/prettier": [
       "error",
       {
@@ -52,7 +58,8 @@
     "max-len": [
       "error",
       {
-        "code": 100
+        "code": 100,
+        "ignoreUrls": true
       }
     ],
     "no-else-return": "error",
@@ -82,5 +89,17 @@
         "argsIgnorePattern": "^_"
       }
     ]
-  }
+  },
+  "overrides": [
+    {
+      "files": [
+        "test/**.test.ts",
+        "src/test/**.ts"
+      ],
+      "rules": {
+        "functional/no-return-void": "off",
+        "functional/no-expression-statement": "off"
+      }
+    }
+  ]
 }
