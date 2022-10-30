@@ -1,4 +1,5 @@
 import { spawn as sp } from 'child-process-promise';
+import { deepEqual } from 'fast-equals';
 import {
   console,
   either as E,
@@ -19,11 +20,11 @@ import { match } from 'ts-pattern';
 
 import * as constants from './constants';
 import { fs } from './fs';
-import { PackageJson, ReleaseYamlFile } from './type';
+import { PackageJson, ReleaseYamlFile, ReleaseYamlSteps } from './type';
 import { multiline } from './utils';
 import * as validation from './validation';
 
-const requiredSteps = [
+const requiredSteps: ReleaseYamlSteps = [
   {
     name: 'Checkout',
     uses: 'actions/checkout@v3',
@@ -87,19 +88,48 @@ const requiredSteps = [
 
 const requiredStepsNames = pipe(
   requiredSteps,
-  readonlyArray.map((x) => x.name)
+  readonlyArray.map((step) => step.name)
 );
 
-const validateBuildSteps = (content: ReleaseYamlFile): E.Either<unknown, unknown> =>
+const isRequiredStepName = (stepName: unknown): boolean =>
+  string.isString(stepName) && readonlyArray.elem(string.Eq)(stepName)(requiredStepsNames);
+
+const yamlDump = (obj: Record<string, unknown>) => yaml.dump(obj, { noCompatMode: true });
+
+type ReleaseYamlError = {
+  readonly code: 'missing steps';
+  readonly steps: ReleaseYamlSteps;
+  readonly requiredSteps: ReleaseYamlSteps;
+};
+
+const validateBuildSteps = (content: ReleaseYamlFile): E.Either<ReleaseYamlError, string> =>
   pipe(
     content.jobs.release.steps,
-    readonlyArray.filterMap(readonlyRecord.lookup('name')),
-    readonlyArray.filter(string.isString),
-    E.fromPredicate(
-      (curr) => readonlyArray.getEq(string.Eq).equals(curr, requiredStepsNames),
-      (curr) => ({ code: 'missing steps', curr, requiredStepsNames })
-    )
+    readonlyArray.filter((step) => isRequiredStepName(step.name)),
+    (steps) =>
+      deepEqual(steps, requiredSteps)
+        ? E.right(yamlDump(content))
+        : E.left({ code: 'missing steps' as const, steps, requiredSteps })
   );
+
+const releaseYamlEmptyContent: ReleaseYamlFile = {
+  name: 'Release',
+  on: {
+    push: {
+      branches: 'main',
+    },
+    pull_request: {
+      branches: 'main',
+    },
+  },
+  jobs: {
+    release: {
+      name: 'Release',
+      'runs-on': 'ubuntu-latest',
+      steps: requiredSteps,
+    },
+  },
+};
 
 const fixReleaseYamlFile = (contentStr: string) =>
   pipe(
@@ -107,31 +137,8 @@ const fixReleaseYamlFile = (contentStr: string) =>
     yaml.load,
     ReleaseYamlFile.type.decode,
     E.chainW(validateBuildSteps),
-    E.map(() => contentStr),
-    E.getOrElse(() =>
-      pipe(
-        {
-          name: 'Release',
-          on: {
-            push: {
-              branches: 'main',
-            },
-            pull_request: {
-              branches: 'main',
-            },
-          },
-          jobs: {
-            release: {
-              name: 'Release',
-              'runs-on': 'ubuntu-latest',
-              steps: requiredSteps,
-            },
-          },
-        },
-        (content) => yaml.dump(content, { noCompatMode: true })
-      )
-    ),
-    TE.of
+    TE.fromEither,
+    validation.liftTE
   );
 
 const sortedRecord = flow(
@@ -305,7 +312,11 @@ const fix = validation.apply(
   safeWriteFile(['tsconfig.dist.json'], constants.tsconfiDistJson),
   safeWriteFile(['.nazna', '.gitconfig'], constants.nazna.gitConfig),
   writeAndChmodFile(['.nazna', 'gitHooks', 'pre-push'], constants.nazna.gitHooks.prePush),
-  fixFile(['.github', 'workflows', 'release.yaml'], fixReleaseYamlFile, 'name: Release'),
+  fixFile(
+    ['.github', 'workflows', 'release.yaml'],
+    fixReleaseYamlFile,
+    yamlDump(releaseYamlEmptyContent)
+  ),
   fixFile(['.gitignore'], fixGitignore, ''),
   safeWriteFile(['.envrc'], constants.envrc),
   pipe(

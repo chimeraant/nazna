@@ -4,14 +4,45 @@ import type { AType } from '@morphic-ts/summoners';
 
 const { summon } = summonFor({});
 
+export const ReleaseYamlSteps = summon((F) =>
+  F.array(
+    F.intersection(
+      F.interface({ name: F.string() }, 'release.yaml steps'),
+      F.strMap(F.unknown())
+    )('Step')
+  )
+);
+
+export type ReleaseYamlSteps = AType<typeof ReleaseYamlSteps>;
+
 export const ReleaseYamlFile = summon((F) =>
   F.interface(
     {
+      name: F.stringLiteral('Release'),
+      on: F.interface(
+        {
+          push: F.interface(
+            {
+              branches: F.stringLiteral('main'),
+            },
+            'push'
+          ),
+          pull_request: F.interface(
+            {
+              branches: F.stringLiteral('main'),
+            },
+            'pull_request'
+          ),
+        },
+        'on'
+      ),
       jobs: F.interface(
         {
           release: F.interface(
             {
-              steps: F.array(F.strMap(F.unknown())),
+              name: F.stringLiteral('Release'),
+              'runs-on': F.stringLiteral('ubuntu-latest'),
+              steps: ReleaseYamlSteps(F),
             },
             'release.yaml jobs release'
           ),
