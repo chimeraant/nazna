@@ -153,7 +153,8 @@ const fixPackageJson = (packageJson: PackageJson) =>
               build: 'pnpm build:types && pnpm build:es6 && pnpm build:cjs && nazna build cli',
               fix: 'eslint --max-warnings=0 --ext .ts . --fix',
               lint: 'eslint --max-warnings=0 --ext .ts .',
-              'pre-push:dirty': 'CI=true pnpm install && pnpm build && pnpm lint && pnpm test',
+              'pre-push:dirty':
+                'CI=true pnpm install && nazna fix && pnpm build && pnpm lint && pnpm test',
               'pre-push': 'pnpm pre-push:dirty && pnpm publish --dry-run',
             }),
             repository: firstRepoUrl,
@@ -211,14 +212,12 @@ const flakeNixTemplate = (packages: string) =>
 const flakeNix = (packageJson: PackageJson) =>
   pipe(
     O.fromNullable(packageJson.nazna?.flake),
-    O.map(
-      flow(
-        readonlyArray.map(std.string.prepend('\n        ')),
-        std.readonlyArray.join(''),
-        flakeNixTemplate
-      )
-    ),
-    O.getOrElse(() => '')
+    O.getOrElseW(() => []),
+    flow(
+      readonlyArray.map(std.string.prepend('\n        ')),
+      std.readonlyArray.join(''),
+      flakeNixTemplate
+    )
   );
 
 const getDirPath = readonlyArray.dropRight(1);
