@@ -81,35 +81,54 @@ const requiredSteps = [
   },
 ];
 
-const fixReleaseYamlFile = flow(
-  yaml.load,
-  ReleaseYamlFile.type.decode,
-  E.map((rawObj) =>
-    pipe(
-      {
-        ...rawObj,
-        name: 'Release',
-        on: {
-          push: {
-            branches: 'main',
-          },
-          pull_request: {
-            branches: 'main',
-          },
-        },
-        jobs: {
-          release: {
-            name: 'Release',
-            'runs-on': 'ubuntu-latest',
-            steps: requiredSteps,
-          },
-        },
-      },
-      (content) => yaml.dump(content, { noCompatMode: true })
-    )
-  ),
-  TE.fromEither
+const requiredStepsNames = pipe(
+  requiredSteps,
+  readonlyArray.map((x) => x.name)
 );
+
+const validateBuildSteps = (content: ReleaseYamlFile): E.Either<unknown, unknown> =>
+  pipe(
+    content.jobs.release.steps,
+    readonlyArray.filterMap(readonlyRecord.lookup('name')),
+    readonlyArray.filter(string.isString),
+    E.fromPredicate(
+      (curr) => readonlyArray.getEq(string.Eq).equals(curr, requiredStepsNames),
+      (curr) => ({ code: 'missing steps', curr, requiredStepsNames })
+    )
+  );
+
+const fixReleaseYamlFile = (contentStr: string) =>
+  pipe(
+    contentStr,
+    yaml.load,
+    ReleaseYamlFile.type.decode,
+    E.chainW(validateBuildSteps),
+    E.map(() => contentStr),
+    E.getOrElse(() =>
+      pipe(
+        {
+          name: 'Release',
+          on: {
+            push: {
+              branches: 'main',
+            },
+            pull_request: {
+              branches: 'main',
+            },
+          },
+          jobs: {
+            release: {
+              name: 'Release',
+              'runs-on': 'ubuntu-latest',
+              steps: requiredSteps,
+            },
+          },
+        },
+        (content) => yaml.dump(content, { noCompatMode: true })
+      )
+    ),
+    TE.of
+  );
 
 const sortedRecord = flow(
   readonlyRecord.toEntries,

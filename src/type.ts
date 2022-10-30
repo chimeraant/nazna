@@ -4,7 +4,26 @@ import type { AType } from '@morphic-ts/summoners';
 
 const { summon } = summonFor({});
 
-export const ReleaseYamlFile = summon((F) => F.strMap(F.unknown()));
+export const ReleaseYamlFile = summon((F) =>
+  F.interface(
+    {
+      jobs: F.interface(
+        {
+          release: F.interface(
+            {
+              steps: F.array(F.strMap(F.unknown())),
+            },
+            'release.yaml jobs release'
+          ),
+        },
+        'release.yaml jobs'
+      ),
+    },
+    'release.yaml'
+  )
+);
+
+export type ReleaseYamlFile = AType<typeof ReleaseYamlFile>;
 
 export const PackageJson = summon((F) =>
   F.partial(
