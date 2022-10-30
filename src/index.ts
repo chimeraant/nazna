@@ -82,7 +82,7 @@ const requiredSteps: ReleaseYamlSteps = [
       GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}',
       NPM_TOKEN: '${{ secrets.NPM_TOKEN }}',
     },
-    run: 'npx semantic-release',
+    run: 'pnpm semantic-release',
   },
 ];
 
