@@ -171,6 +171,7 @@ const fixPackageJson = (packageJson: PackageJson) =>
                 '@swc/core': '^1.3.8',
                 eslint: '^8.25.0',
                 pnpm: '^7.13.4',
+                'semantic-release': '^19.0.5',
                 typescript: '^4.8.4',
                 vitest: '^0.24.1',
               },
