@@ -86,7 +86,8 @@ export const eslintrcJson = multiline(`
     "max-len": [
       "error",
       {
-        "code": 100
+        "code": 100,
+        "ignoreUrls": true
       }
     ],
     "no-else-return": "error",
