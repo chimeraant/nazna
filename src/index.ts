@@ -94,7 +94,8 @@ const requiredStepsNames = pipe(
 const isRequiredStepName = (stepName: unknown): boolean =>
   string.isString(stepName) && readonlyArray.elem(string.Eq)(stepName)(requiredStepsNames);
 
-const yamlDump = (obj: Record<string, unknown>) => yaml.dump(obj, { noCompatMode: true });
+const yamlDump = (obj: Record<string, unknown>) =>
+  yaml.dump(obj, { noCompatMode: true, lineWidth: 100 });
 
 type ReleaseYamlError = {
   readonly code: 'missing steps';
