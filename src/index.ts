@@ -52,10 +52,6 @@ const requiredSteps = [
     run: 'pnpm nazna fix',
   },
   {
-    name: 'Lint',
-    run: 'pnpm lint',
-  },
-  {
     name: 'Build es6',
     run: 'pnpm build:es6',
   },
@@ -70,6 +66,14 @@ const requiredSteps = [
   {
     name: 'Build cli',
     run: 'pnpm nazna build cli',
+  },
+  {
+    name: 'Lint',
+    run: 'pnpm lint',
+  },
+  {
+    name: 'Test',
+    run: 'pnpm lint',
   },
   {
     name: 'Release',
@@ -169,7 +173,7 @@ const fixPackageJson = (packageJson: PackageJson) =>
               'build:es6': 'swc src --out-dir dist/es6 --source-maps',
               'build:cjs': 'swc src --out-dir dist/cjs --source-maps --config module.type=commonjs',
               'build:types': 'tsc --project tsconfig.dist.json',
-              build: 'pnpm build:types && pnpm build:es6 && pnpm build:cjs && nazna build cli',
+              build: 'pnpm build:es6 && pnpm build:cjs && pnpm build:types && nazna build cli',
               fix: 'eslint --max-warnings=0 --ext .ts . --fix',
               lint: 'eslint --max-warnings=0 --ext .ts .',
               'pre-push:dirty':
