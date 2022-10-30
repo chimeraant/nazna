@@ -73,7 +73,7 @@ const requiredSteps = [
   },
   {
     name: 'Test',
-    run: 'pnpm lint',
+    run: 'pnpm test',
   },
   {
     name: 'Release',
