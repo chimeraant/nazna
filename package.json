@@ -46,7 +46,7 @@
     "fix": "eslint --max-warnings=0 --ext .ts . --fix",
     "lint": "eslint --max-warnings=0 --ext .ts .",
     "pre-push": "pnpm pre-push:dirty && pnpm publish --dry-run",
-    "pre-push:dirty": "CI=true pnpm install && pnpm build && pnpm lint && pnpm test",
+    "pre-push:dirty": "pnpm install && pnpm fix && git add . && git commit --amend --no-edit && pnpm build && pnpm test",
     "restore": "git checkout -- package.json .github/workflows/release.yaml .gitignore",
     "test": "echo donothing",
     "test:fix": "pnpm restore && pnpm build && ./dist/cli.js fix && pnpm restore"

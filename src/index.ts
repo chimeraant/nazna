@@ -186,7 +186,9 @@ const fixPackageJson = (packageJson: PackageJson) =>
               fix: 'eslint --max-warnings=0 --ext .ts . --fix',
               lint: 'eslint --max-warnings=0 --ext .ts .',
               'pre-push:dirty':
-                'CI=true pnpm install && nazna fix && pnpm build && pnpm lint && pnpm test',
+                'pnpm install && pnpm fix && nazna fix ' +
+                '&& git add . && git commit --amend --no-edit ' +
+                '&& pnpm build && pnpm test',
               'pre-push': 'pnpm pre-push:dirty && pnpm publish --dry-run',
             }),
             repository: firstRepoUrl,
