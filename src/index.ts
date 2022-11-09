@@ -3,7 +3,6 @@ import { deepEqual } from 'fast-equals';
 import {
   console,
   either as E,
-  option as O,
   ord,
   readonlyArray,
   readonlyNonEmptyArray,
@@ -168,12 +167,12 @@ const fixPackageJson = (packageJson: PackageJson) =>
               ...packageJson.devDependencies,
               ...{
                 '@swc/cli': '^0.1.57',
-                '@swc/core': '^1.3.8',
-                eslint: '^8.25.0',
-                pnpm: '^7.13.4',
+                '@swc/core': '^1.3.14',
+                eslint: '^8.27.0',
+                pnpm: '^7.14.2',
                 'semantic-release': '^19.0.5',
                 typescript: '^4.8.4',
-                vitest: '^0.24.1',
+                vitest: '^0.24.5',
               },
             }),
             scripts: sortedRecord({
@@ -229,30 +228,18 @@ const fixGitignore = flow(
   TE.right
 );
 
-const flakeNixTemplate = (packages: string) =>
-  multiline(`
+const flakeNixTemplate = multiline(`
 {
   outputs = { self, nixpkgs }: with nixpkgs.legacyPackages.x86_64-linux; {
     devShell.x86_64-linux = mkShell {
       buildInputs = [
         nodejs-16_x
-        nodePackages.pnpm${packages}
+        nodePackages.pnpm
       ];
     };
   };
 }
 `);
-
-const flakeNix = (packageJson: PackageJson) =>
-  pipe(
-    O.fromNullable(packageJson.nazna?.flake),
-    O.getOrElseW(() => []),
-    flow(
-      readonlyArray.map(std.string.prepend('\n        ')),
-      std.readonlyArray.join(''),
-      flakeNixTemplate
-    )
-  );
 
 const getDirPath = readonlyArray.dropRight(1);
 
@@ -262,6 +249,10 @@ const safeWriteFile = (filePath: readonly string[], content: string) =>
     TE.chain(() => fs.writeFile(filePath, content)),
     validation.liftTE
   );
+
+const doNothing = pipe(TE.right('skipped'), validation.liftTE);
+
+const doIf = <L, R>(cond: boolean, te: TE.TaskEither<readonly L[], R>) => (cond ? te : doNothing);
 
 const writeAndChmodFile = (path: readonly string[], content: string) =>
   pipe(
@@ -322,7 +313,6 @@ const fix = validation.apply(
     yamlDump(releaseYamlEmptyContent)
   ),
   fixFile(['.gitignore'], fixGitignore, ''),
-  safeWriteFile(['.envrc'], constants.envrc),
   pipe(
     fs.readFile(['package.json']),
     validation.liftTE,
@@ -334,7 +324,8 @@ const fix = validation.apply(
           fixPackageJson(packageJson),
           TE.chain((content) => safeWriteFile(['package.json'], content))
         ),
-        safeWriteFile(['flake.nix'], flakeNix(packageJson))
+        doIf(packageJson.nazna?.flake ?? true, safeWriteFile(['flake.nix'], flakeNixTemplate)),
+        doIf(packageJson.nazna?.envrc ?? true, safeWriteFile(['.envrc'], constants.envrc))
       )
     )
   )

@@ -64,7 +64,8 @@ export const PackageJson = summon((F) =>
       scripts: F.strMap(F.string()),
       nazna: F.partial(
         {
-          flake: F.nonEmptyArray(F.string()),
+          flake: F.boolean(),
+          envrc: F.boolean(),
         },
         'naznaConfig'
       ),
