@@ -184,11 +184,8 @@ const fixPackageJson = (packageJson: PackageJson) =>
               build: 'pnpm build:es6 && pnpm build:cjs && pnpm build:types && nazna build cli',
               fix: 'eslint --max-warnings=0 --ext .ts . --fix',
               lint: 'eslint --max-warnings=0 --ext .ts .',
-              'pre-push:dirty':
-                'pnpm install && pnpm fix && nazna fix ' +
-                '&& git add . && git commit --amend --no-edit ' +
-                '&& pnpm build && pnpm test',
               'pre-push': 'pnpm pre-push:dirty && pnpm publish --dry-run',
+              'pre-push:dirty': 'pnpm install && nazna fix && pnpm build && pnpm lint && pnpm test',
             }),
             repository: firstRepoUrl,
             version: '0.0.0-semantic-release',
